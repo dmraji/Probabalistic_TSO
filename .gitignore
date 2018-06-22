@@ -1,0 +1,12 @@
+# Makefiles
+CMakeFiles/*
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Yuge Text Files
+pos.txt
+ptcld.txt
+
+# Executable
+rc_main

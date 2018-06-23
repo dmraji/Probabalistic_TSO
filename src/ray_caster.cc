@@ -137,6 +137,7 @@ vector<float> ray_caster::linspace(float a, float b, int n)
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+// Create and populate bounding
 float ray_caster::bound_build(float **boundaries
                               )
 {

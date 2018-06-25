@@ -32,7 +32,10 @@ class ray_caster
     float max_x, max_y, max_z;
     int x_pts, y_pts, z_pts, tot_pts;
     int box_ind;
+    int cloud_cut, cloud_chunk_len;
+    int max_ax;
     std::vector<float> spaced_x, spaced_y, spaced_z;
+    std::vector<float> dir(3);
 
 
 };

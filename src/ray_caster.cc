@@ -38,7 +38,7 @@ ray_caster::ray_caster(float **ptcld,
   tot_pts = x_pts*y_pts*z_pts;
 
   float** box = new float*[tot_pts];
-  for(int i = 0; i < tot_pts; i++)
+  for(int i = 0; i < tot_pts; ++i)
   {
     box[i] = new float[3];
   }
@@ -47,12 +47,13 @@ ray_caster::ray_caster(float **ptcld,
   spaced_y = linspace(min_y, max_y, y_pts);
   spaced_z = linspace(min_z, max_z, z_pts);
 
+  // Organize box pts in chunks of z-space for easier parsing during raycasting
   box_ind = 0;
-  for(int i = 0; i < x_pts; i++)
+  for(int k = 0; k < z_pts; ++k)
   {
-    for(int j = 0; j < y_pts; j++)
+    for(int i = 0; i < x_pts; ++i)
     {
-      for(int k = 0; k < z_pts; k++)
+      for(int j = 0; j < y_pts; ++j)
       {
         box[box_ind][0] = spaced_x[i];
         box[box_ind][1] = spaced_y[j];
@@ -64,37 +65,79 @@ ray_caster::ray_caster(float **ptcld,
   }
 
   // Initialize hit tracker for pointcloud
-  int** ptcld_hit = new int*[ptcld_len];
-  for(int i = 0; i < ptcld_len; i++)
+  int** box_hit = new int*[tot_pts];
+  for(int i = 0; i < tot_pts; ++i)
   {
-    ptcld_hit[i] = new int[3];
+    box_hit[i] = new int[3];
   }
 
   // Initialize miss tracker for pointcloud
-  int** ptcld_miss = new int*[ptcld_len];
-  for(int i = 0; i < ptcld_len; i++)
+  int** box_miss = new int*[tot_pts];
+  for(int i = 0; i < tot_pts; ++i)
   {
-    ptcld_miss[i] = new int[3];
+    box_miss[i] = new int[3];
   }
 
-  for(int o = 0; o < 1; o++)
+
+  cloud_cut = 0;
+  cloud_chunk_len = int(floor(ptcld_len / path_len));
+  for(int o = 0; o < path_len; ++o)
   {
+    // Build chunk of ptcld
+    float** ptcld_chunk = new float*[cloud_chunk_len];
+    for(int i = 0; i < cloud_chunk_len; ++i)
+    {
+      ptcld_chunk[i] = new int[3];
+    }
+
+    for(int i = 0; i < cloud_chunk_len; ++i)
+    {
+      for(int j = 0; j < 3; ++j)
+      {
+        ptcld_chunk[i][j] = ptcld[i][j];
+      }
+    }
+
+    cloud_cut = cloud_cut + cloud_chunk_len;
+
+    // Iterate through chunk of pointcloud
+    for(int p = 0; p < cloud_chunk_len; ++p)
+    {
+
+      // Determine unit vector of dir from origin to point
+      max_ax = 0;
+      for(int ax = 0; ax < 3; ++ax)
+      {
+        dir[ax] = ptcld[p][ax] - path[o][ax]
+        if(abs(dir[ax]) > max_ax)
+        {
+          max_ax = abs(dir[ax]);
+        }
+      }
+      for(int ax = 0; ax < 3; ++ax)
+      {
+        dir[ax] = dir[ax] / max_ax;
+      }
 
 
 
-    // for(int p = 0; p < ptcld_len; p++)
-    // {
-    //
-    // }
+    }
+
+    // Delete pointcloud chunk
+    for(int i = 0; i < cloud_chunk_len; ++i)
+    {
+      delete [] ptcld_chunk[i];
+    }
+    delete [] ptcld_chunk;
 
   }
 
-  int_kill(ptcld_len,
-           ptcld_hit
+  int_kill(tot_pts,
+           box_hit
            );
 
-  int_kill(ptcld_len,
-           ptcld_miss
+  int_kill(tot_pts,
+           box_miss
            );
 
 }
@@ -121,25 +164,18 @@ void ray_caster::int_kill(int pos_len,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Linspace-like vectors
-vector<float> ray_caster::linspace(float a, float b, int n)
+std::vector<float> ray_caster::linspace(float a, float b, int n)
 {
-    vector<float> spaced_vec;
-    float step = (b-a) / (n-1);
+    std::vector<float> spaced_vec;
+    float step = (b - a) / (n - 1);
 
     while(a <= b)
     {
-        array.push_back(a);
-        a += step;
+      array.push_back(a);
+      a += step;
     }
 
     return spaced_vec;
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Create and populate bounding
-float ray_caster::bound_build(float **boundaries
-                              )
-{
-
-}

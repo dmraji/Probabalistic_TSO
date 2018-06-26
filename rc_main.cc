@@ -30,8 +30,8 @@ void timestamp(double start,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Read large pos files into dynamic arrays on the heap
-float pos_reader(string fname_str,
-                 float **pos,
+void pos_reader(string fname_str,
+                 vector< vector<float> > & pos,
                  string delimiter
                  )
 {
@@ -56,24 +56,22 @@ float pos_reader(string fname_str,
     ++ln_ctr;
   }
 
-  return **pos;
-
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 float bnbx(int pos_len,
-           float **pos,
+           vector< vector<float> > & pos,
            float **boundaries
            )
 {
 
-  float x_max = -100;
-  float x_min = 100;
-  float y_max = -100;
-  float y_min = 100;
-  float z_max = -100;
-  float z_min = 100;
+  float x_max = -10.;
+  float x_min = 10.;
+  float y_max = -10.;
+  float y_min = 10.;
+  float z_max = -10.;
+  float z_min = 10.;
 
   for(int i = 0; i < pos_len; i++)
   {
@@ -149,7 +147,6 @@ int main(int argc, char** argv)
 {
 
   std::clock_t start;
-
   start = std::clock();
 
   cout << endl;
@@ -157,41 +154,44 @@ int main(int argc, char** argv)
 
   int path_len = 525;
 
-  float** path = new float*[path_len];
-  for(int i = 0; i < path_len; i++)
-  {
-    path[i] = new float[3];
-  }
+  std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0));
+
+  // float** path = new float*[path_len];
+  // for(int i = 0; i < path_len; i++)
+  // {
+  //   path[i] = new float[3];
+  // }
 
   int ptcld_len = 14563019;
 
-  float** ptcld = new float*[ptcld_len];
-  for(int i = 0; i < ptcld_len; i++)
-  {
-    ptcld[i] = new float[3];
-  }
+  std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0));
+
+  // float** ptcld = new float*[ptcld_len];
+  // for(int i = 0; i < ptcld_len; i++)
+  // {
+  //   ptcld[i] = new float[3];
+  // }
 
   string delim = " ";
 
-  **ptcld = pos_reader("ptcld.txt",
-                       ptcld,
-                       delim);
+  pos_reader("ptcld.txt",
+                     ptcld,
+                     delim);
+
+  // **ptcld = pos_reader("ptcld.txt",
+  //                      ptcld,
+  //                      delim);
 
   timestamp(start,
             "pointcloud");
 
-  **ptcld = pos_reader("pos.txt",
-                       path,
-                       delim);
+  pos_reader("pos.txt",
+                    path,
+                    delim);
 
-  for(int i = 0; i < ptcld_len; i++)
-  {
-    for(int j = 0; j < 3; j++)
-    {
-      // std::cout << ptcld[i][j] << '\n';
-    }
-  }
-
+  // **path = pos_reader("pos.txt",
+  //                     path,
+  //                     delim);
 
   float** boundaries = new float*[2];
   for(int i = 0; i < 2; i++)
@@ -199,7 +199,10 @@ int main(int argc, char** argv)
     boundaries[i] = new float[3];
   }
 
-  **boundaries = bnbx(ptcld_len, ptcld, boundaries);
+  **boundaries = bnbx(ptcld_len,
+                      ptcld,
+                      boundaries
+                      );
 
   ray_caster(ptcld,
              ptcld_len,
@@ -208,13 +211,13 @@ int main(int argc, char** argv)
              boundaries
              );
 
-  pos_kill(path_len,
-           path
-           );
-
-  pos_kill(ptcld_len,
-           ptcld
-           );
+  // pos_kill(path_len,
+  //          path
+  //          );
+  //
+  // pos_kill(ptcld_len,
+  //          ptcld
+  //          );
 
   timestamp(start,
             "end");

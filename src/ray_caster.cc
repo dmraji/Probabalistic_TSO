@@ -9,9 +9,9 @@ using namespace std;
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-ray_caster::ray_caster(float **ptcld,
+ray_caster::ray_caster(vector< vector<float> > & ptcld,
                        int ptcld_len,
-                       float **path,
+                       vector< vector<float> > & path,
                        int path_len,
                        float** boundaries
                        )
@@ -49,11 +49,14 @@ ray_caster::ray_caster(float **ptcld,
   // z_pos = bifurcate(spaced_z, 1);
 
   tot_pts = spaced_x.size() * spaced_y.size() * spaced_z.size();
-  float** box = new float*[tot_pts];
-  for(int i = 0; i < tot_pts; ++i)
-  {
-    box[i] = new float[3];
-  }
+
+  std::vector< std::vector<float> > box(tot_pts, std::vector<float>(3, 0));
+
+  // float** box = new float*[tot_pts];
+  // for(int i = 0; i < tot_pts; ++i)
+  // {
+  //   box[i] = new float[3];
+  // }
 
   // Organize box pts in chunks of z-space for easier parsing during raycasting
   box_ind = 0;
@@ -73,26 +76,30 @@ ray_caster::ray_caster(float **ptcld,
   }
 
   // Initialize hit tracker for box
-  int** box_hit = new int*[tot_pts];
-  for(int i = 0; i < tot_pts; ++i)
-  {
-    box_hit[i] = new int[3];
-  }
+  std::vector< std::vector<int> > box_hit(tot_pts, std::vector<int>(3, 0));
 
-  **box_hit = init_zero(tot_pts,
-                        box_hit
-                        );
+  // int** box_hit = new int*[tot_pts];
+  // for(int i = 0; i < tot_pts; ++i)
+  // {
+  //   box_hit[i] = new int[3];
+  // }
+
+  // **box_hit = init_zero(tot_pts,
+  //                       box_hit
+  //                       );
 
   // Initialize miss tracker for box
-  int** box_miss = new int*[tot_pts];
-  for(int i = 0; i < tot_pts; ++i)
-  {
-    box_miss[i] = new int[3];
-  }
+  std::vector< std::vector<int> > box_miss(tot_pts, std::vector<int>(3, 0));
 
-  **box_miss = init_zero(tot_pts,
-                         box_miss
-                         );
+  // int** box_miss = new int*[tot_pts];
+  // for(int i = 0; i < tot_pts; ++i)
+  // {
+  //   box_miss[i] = new int[3];
+  // }
+
+  // **box_miss = init_zero(tot_pts,
+  //                        box_miss
+  //                        );
 
   // Init vars for path iteration
   std::vector<float> dist(3);
@@ -102,12 +109,15 @@ ray_caster::ray_caster(float **ptcld,
   for(int o = 0; o < 1; ++o)
   {
     std::cout << "path_ind: " << o << '\n';
+
     // Build chunk of ptcld
-    float** ptcld_chunk = new float*[cloud_chunk_len];
-    for(int i = 0; i < cloud_chunk_len; ++i)
-    {
-      ptcld_chunk[i] = new float[3];
-    }
+    std::vector< std::vector<float> > ptcld_chunk(cloud_chunk_len, std::vector<float>(3, 0));
+
+    // float** ptcld_chunk = new float*[cloud_chunk_len];
+    // for(int i = 0; i < cloud_chunk_len; ++i)
+    // {
+    //   ptcld_chunk[i] = new float[3];
+    // }
 
     for(int i = 0; i < cloud_chunk_len; ++i)
     {
@@ -124,8 +134,6 @@ ray_caster::ray_caster(float **ptcld,
     // Iterate through chunk of pointcloud
     for(int p = 0; p < cloud_chunk_len; ++p)
     {
-
-      std::cout << '\n' << '\n' << '\n' << '\n' << '\n' << '\n' << endl;
       std::cout << "ptcld_ind" << p << '\n';
 
       // Determine unit vector of dir from origin to point
@@ -143,8 +151,8 @@ ray_caster::ray_caster(float **ptcld,
         dir[ax] = dist[ax] / max_ax;
       }
 
-      mag = sqrt(pow(dist[0], 2) + pow(dist[1], 2) + pow(dist[2], 2));
-      increment_index = floor(mag / resolution);
+      mag = std::sqrt(dist[0]*dist[0] + dist[1]*dist[1] + dist[2]*dist[2]);
+      increment_index = std::floor(mag / resolution);
       increment = mag / increment_index;
 
       // std::cout << "mag: " << mag << '\n';
@@ -154,8 +162,8 @@ ray_caster::ray_caster(float **ptcld,
       // Iterate through ray cast
       for(int i = 0; i < increment_index; ++i)
       {
-        std::cout << '\n' << endl;
-        std::cout << "inc ind: "<< i << '\n';
+        // std::cout << '\n' << endl;
+        // std::cout << "inc ind: "<< i << '\n';
         // Create intermittent point
         for(int j = 0; j < 3; ++j)
         {
@@ -170,8 +178,8 @@ ray_caster::ray_caster(float **ptcld,
           // std::cout << "bbox ind: " << k << '\n';
           if(i != increment_index-1)
           {
-            prox = sqrt(pow(box[k][0] - pt_x, 2) + pow(box[k][1] - pt_y, 2) + pow(box[k][2] - pt_z, 2));
-            if(prox < resolution / 2)
+            prox_2 = (box[k][0] - pt_x)*(box[k][0] - pt_x) + (box[k][1] - pt_y)*(box[k][1] - pt_y) + (box[k][2] - pt_z)*(box[k][2] - pt_z);
+            if(prox_2 < (resolution*resolution) / 4)
             {
               for(int h = 0; h < 3; ++h)
               {
@@ -181,12 +189,9 @@ ray_caster::ray_caster(float **ptcld,
           }
           else
           {
-            if(prox < resolution / 2)
+            for(int h = 0; h < 3; ++h)
             {
-              for(int h = 0; h < 3; ++h)
-              {
-                box_hit[k][h] = box_hit[k][h] + 1;
-              }
+              box_hit[k][h] = box_hit[k][h] + 1;
             }
           }
 
@@ -197,21 +202,21 @@ ray_caster::ray_caster(float **ptcld,
     }
 
     // Delete pointcloud chunk
-    for(int i = 0; i < cloud_chunk_len; ++i)
-    {
-      delete [] ptcld_chunk[i];
-    }
-    delete [] ptcld_chunk;
+    // for(int i = 0; i < cloud_chunk_len; ++i)
+    // {
+    //   delete [] ptcld_chunk[i];
+    // }
+    // delete [] ptcld_chunk;
 
   }
 
-  int_kill(tot_pts,
-           box_hit
-           );
-
-  int_kill(tot_pts,
-           box_miss
-           );
+  // int_kill(tot_pts,
+  //          box_hit
+  //          );
+  //
+  // int_kill(tot_pts,
+  //          box_miss
+  //          );
 
 }
 

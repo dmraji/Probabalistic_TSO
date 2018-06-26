@@ -7,9 +7,9 @@ class ray_caster
 {
 
   public:
-    ray_caster(float**,
+    ray_caster(vector< vector<float> > &,
                int,
-               float**,
+               vector< vector<float> > &,
                int,
                float**
                );
@@ -42,7 +42,7 @@ class ray_caster
     float max_x, max_y, max_z;
     float mag, increment;
     float pt_x, pt_y, pt_z;
-    float prox;
+    float prox_2;
     int x_pts, y_pts, z_pts, tot_pts;
     int box_ind;
     int cloud_cut, cloud_chunk_len;

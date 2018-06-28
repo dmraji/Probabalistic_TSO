@@ -14,8 +14,8 @@ using namespace std;
 
 void handle_error(const char* msg)
 {
-    perror(msg);
-    exit(255);
+  perror(msg);
+  exit(255);
 }
 
 void timestamp(double start,
@@ -23,17 +23,17 @@ void timestamp(double start,
                )
 {
   double elapsed;
-  elapsed = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;
+  elapsed = (std::clock() - start) / (double) CLOCKS_PER_SEC;
   std::cout << "timestamp at " << checkpt << ": " << elapsed << '\n';
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-// Read large pos files into dynamic arrays on the heap
+// Read large pos text files
 void pos_reader(string fname_str,
-                 vector< vector<float> > & pos,
-                 string delimiter
-                 )
+                vector< vector<float> > & pos,
+                string delimiter
+                )
 {
 
   string rwx = "r";
@@ -60,69 +60,60 @@ void pos_reader(string fname_str,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-float bnbx(int pos_len,
-           vector< vector<float> > & pos,
-           float **boundaries
-           )
+// Read binary pos files
+void pos_bin_read(string fname_str,
+                  vector< vector<float> > & pos
+                  )
 {
 
-  float x_max = -10.;
-  float x_min = 10.;
-  float y_max = -10.;
-  float y_min = 10.;
-  float z_max = -10.;
-  float z_min = 10.;
-
-  for(int i = 0; i < pos_len; i++)
+  float f;
+  ifstream fin(fname_str, ios::binary);
+  int r_ind = 0;
+  int c_ind = 0;
+  while(fin.read(reinterpret_cast<char*>(&f), sizeof(float)))
   {
-    // x-coord
-    if(pos[i][0] > x_max)
+    pos[r_ind][c_ind] = f;
+    ++c_ind;
+    if(c_ind > 2)
     {
-      x_max = pos[i][0];
-    }
-    else
-    {
-      if(pos[i][0] < x_min)
-      {
-        x_min = pos[i][0];
-      }
-    }
-
-    // y-coord
-    if(pos[i][1] > y_max)
-    {
-      y_max = pos[i][1];
-    }
-    else
-    {
-      if(pos[i][1] < y_min)
-      {
-        y_min = pos[i][1];
-      }
-    }
-
-    // z-coord
-    if(pos[i][2] > z_max)
-    {
-      z_max = pos[i][2];
-    }
-    else
-    {
-      if(pos[i][2] < z_min)
-      {
-        z_min = pos[i][2];
-      }
+      c_ind = 0;
+      ++r_ind;
     }
   }
+}
 
-  boundaries[0][0] = x_min;
-  boundaries[1][0] = x_max;
-  boundaries[0][1] = y_min;
-  boundaries[1][1] = y_max;
-  boundaries[0][2] = z_min;
-  boundaries[1][2] = z_max;
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-  return **boundaries;
+// Finding max and min elements in multidimensional vectors
+template< class T >
+struct column_adapter
+{
+  column_adapter(size_t column) : m_column( column ) {}
+
+  bool operator()(const std::vector< T > & left, const std::vector< T > & right)
+  {
+    return left.at( m_column ) < right.at( m_column );
+  }
+
+  private:
+    size_t m_column;
+};
+
+void bnbx(int pos_len,
+          vector< vector<float> > & pos,
+          vector< vector<float> > & boundaries
+          )
+{
+  for(int i = 0; i < 3; ++i)
+  {
+    const size_t column = i;
+    auto biggest = std::max_element(std::begin(pos), std::end(pos), column_adapter< float >( column ) );
+    boundaries[1][i] = (*biggest).at( column );
+
+    auto smallest = std::min_element(std::begin(pos), std::end(pos), column_adapter< float >( column ) );
+    boundaries[0][i] = (*smallest).at( column );
+  }
+
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -153,71 +144,50 @@ int main(int argc, char** argv)
   std::cout << "Init main." << '\n';
 
   int path_len = 525;
-
   std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0));
 
-  // float** path = new float*[path_len];
-  // for(int i = 0; i < path_len; i++)
-  // {
-  //   path[i] = new float[3];
-  // }
-
   int ptcld_len = 14563019;
-
   std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0));
 
-  // float** ptcld = new float*[ptcld_len];
-  // for(int i = 0; i < ptcld_len; i++)
-  // {
-  //   ptcld[i] = new float[3];
-  // }
+  // string delim = " ";
 
-  string delim = " ";
+  pos_bin_read("ptcld.bin",
+               ptcld);
 
-  pos_reader("ptcld.txt",
-                     ptcld,
-                     delim);
-
-  // **ptcld = pos_reader("ptcld.txt",
-  //                      ptcld,
-  //                      delim);
+  // std::cout << ptcld[ptcld_len-1][0] << '\n';
 
   timestamp(start,
             "pointcloud");
 
-  pos_reader("pos.txt",
-                    path,
-                    delim);
+  pos_bin_read("pos.bin",
+               path);
 
-  // **path = pos_reader("pos.txt",
-  //                     path,
-  //                     delim);
+  timestamp(start,
+           "path");
 
-  float** boundaries = new float*[2];
-  for(int i = 0; i < 2; i++)
-  {
-    boundaries[i] = new float[3];
-  }
+  // float** boundaries = new float*[2];
+  // for(int i = 0; i < 2; i++)
+  // {
+  //   boundaries[i] = new float[3];
+  // }
 
-  **boundaries = bnbx(ptcld_len,
-                      ptcld,
-                      boundaries
-                      );
+  std::vector< std::vector<float> > boundaries(2, std::vector<float>(3, 0));
+
+  bnbx(ptcld_len,
+       ptcld,
+       boundaries
+       );
+
+  timestamp(start,
+           "bnbx");
 
   ray_caster(ptcld,
              ptcld_len,
              path,
              path_len,
-             boundaries
+             boundaries,
+             start
              );
-
-  // pos_kill(path_len,
-  //          path
-  //          );
-  //
-  // pos_kill(ptcld_len,
-  //          ptcld
-  //          );
 
   timestamp(start,
             "end");

@@ -1,1 +1,0 @@
-/usr/bin/c++      CMakeFiles/octoccupancy.dir/octoccupancy.cc.o  -o octoccupancy  -L/usr/local/lib -rdynamic /usr/local/lib/liboctomap.so /usr/local/lib/liboctomath.so -Wl,-rpath,/usr/local/lib 

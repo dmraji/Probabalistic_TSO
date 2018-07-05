@@ -3,10 +3,19 @@ CMakeFiles/*
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+octoccupancy/CMakeFiles/*
+octoccupancy/CMakeCache.txt
+octoccupancy/cmake_install_cmake
+octoccupancy/Makefile
 
 # Yuge Text Files
 pos.txt
 ptcld.txt
+u.txt
+octoccupancy/u.txt
+octoccupancy/ptcld.txt
+octoccupancy/pos.txt
 
 # Executable
 rc_main
+octoccupancy/octoccupancy

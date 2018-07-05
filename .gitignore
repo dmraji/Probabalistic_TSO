@@ -3,7 +3,7 @@ CMakeFiles/*
 CMakeCache.txt
 cmake_install.cmake
 Makefile
-octoccupancy/CMakeFiles/*
+#octoccupancy/CMakeFiles/*
 octoccupancy/CMakeCache.txt
 octoccupancy/cmake_install_cmake
 octoccupancy/Makefile
@@ -12,7 +12,7 @@ octoccupancy/Makefile
 pos.txt
 ptcld.txt
 u.txt
-octoccupancy/u.txt
+#octoccupancy/u.txt
 octoccupancy/ptcld.txt
 octoccupancy/pos.txt
 

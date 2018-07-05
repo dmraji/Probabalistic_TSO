@@ -1,3 +1,0 @@
-/home/dmraji/2018/octoccupancy/CMakeFiles/edit_cache.dir
-/home/dmraji/2018/octoccupancy/CMakeFiles/rebuild_cache.dir
-/home/dmraji/2018/octoccupancy/CMakeFiles/octoccupancy.dir

@@ -1,9 +1,14 @@
+#include <fstream>
 #include <iostream>
 #include <string>
+
 #include <vector>
+#include <algorithm>
+
 #include <unordered_map>
 #include <utility>
 #include <functional>
+
 #include <cmath>
 #include <ctime>
 
@@ -19,6 +24,30 @@ void timestamp(double start,
   double elapsed;
   elapsed = (std::clock() - start) / (double) CLOCKS_PER_SEC;
   std::cout << "timestamp at " << checkpt << ": " << elapsed << '\n';
+}
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// Read binary pos files
+void pos_bin_read(string fname_str,
+                  vector< vector<float> > & pos
+                  )
+{
+
+  float f;
+  ifstream fin(fname_str, ios::binary);
+  int r_ind = 0;
+  int c_ind = 0;
+  while(fin.read(reinterpret_cast<char*>(&f), sizeof(float)))
+  {
+    pos[r_ind][c_ind] = f;
+    ++c_ind;
+    if(c_ind > 2)
+    {
+      c_ind = 0;
+      ++r_ind;
+    }
+  }
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -100,6 +129,24 @@ int main(int argc, char **argv)
   std::clock_t start;
   start = std::clock();
 
+  // int path_len = 525;
+  // std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0));
+  //
+  // int ptcld_len = 14563019;
+  // std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0));
+  //
+  // pos_bin_read("ptcld.bin",
+  //              ptcld);
+  //
+  // timestamp(start,
+  //           "pointcloud");
+  //
+  // pos_bin_read("pos.bin",
+  //              path);
+  //
+  // timestamp(start,
+  //          "path");
+
   unordered_multimap <ind, pt, hasher, key_equal> box;
   // boost::unordered_multimap<ind, pt, boost::hash<ind>> box_boost;
 
@@ -124,12 +171,12 @@ int main(int argc, char **argv)
 
   unordered_multimap <ind, pt, hasher, key_equal> :: iterator it;
 
-  cout << "Unordered multimap contains: " << endl;
-  for (it = box.begin(); it != box.end(); ++it)
-  {
-
-    std::cout << "(" << it->first.x << ", " << it->first.y << " : " << it->second.x << ", " << it->second.y << ")" << endl;
-  }
+  // cout << "Unordered multimap contains: " << endl;
+  // for (it = box.begin(); it != box.end(); ++it)
+  // {
+  //
+  //   std::cout << "(" << it->first.x << ", " << it->first.y << " : " << it->second.x << ", " << it->second.y << ")" << endl;
+  // }
 
   // boost::unordered_multimap<ind, pt, boost::hash<ind>>::iterator it;
   // for (it=box_boost.begin(); it!=box_boost.end(); ++it)

@@ -5,6 +5,9 @@
 #include <vector>
 #include <random>
 #include <iterator>
+#include <cstdlib>
+#include <iomanip>
+#include <limits>
 
 #include "ray_caster.hh"
 #include "boost/multi_array.hpp"
@@ -254,14 +257,17 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
 
       // Stochastic ray-tracing
       std::random_device rd;
-      // std::mt19937 gen(rd());
+      std::mt19937 gen(rd());
       std::discrete_distribution<> distribution(std::begin(probs), std::end(probs));
 
+      timestamp(start,
+                "start_path");
       while(pt != point_in_cloud)
       {
         f_dist = (point_in_cloud[0] - pt[0])*(point_in_cloud[0] - pt[0]) + (point_in_cloud[1] - pt[1])*(point_in_cloud[1] - pt[1]) + (point_in_cloud[2] - pt[2])*(point_in_cloud[2] - pt[2]);
 
-        pt_ind = distribution(rd);
+        pt_ind = distribution(gen);
+
         pt[pt_ind] = pt[pt_ind] + direc[pt_ind];
 
         n_dist = (point_in_cloud[0] - pt[0])*(point_in_cloud[0] - pt[0]) + (point_in_cloud[1] - pt[1])*(point_in_cloud[1] - pt[1]) + (point_in_cloud[2] - pt[2])*(point_in_cloud[2] - pt[2]);
@@ -281,6 +287,8 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
         // }
 
       }
+      timestamp(start,
+                "end_path");
 
       // Add hit to box
       box_occ[pt[0]][pt[1]][pt[2]] = box_occ[pt[0]][pt[1]][pt[2]] + 1;

@@ -97,8 +97,8 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
 
   typedef boost::multi_array<int, 3> array_type_3d;
   typedef array_type_3d::index index_3d;
-  array_type_3d box_occ(boost::extents[x_pts][y_pts][z_pts]);
-  array_type_3d box_free(boost::extents[x_pts][y_pts][z_pts]);
+  array_type_3d box_hit(boost::extents[x_pts][y_pts][z_pts]);
+  array_type_3d box_miss(boost::extents[x_pts][y_pts][z_pts]);
 
   for(index_3d ii = 0; ii < x_pts; ++ii)
   {
@@ -106,11 +106,15 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
     {
       for(index_3d kk = 0; kk < z_pts; ++kk)
       {
-        box_occ[ii][jj][kk] = 0;
-        box_free[ii][jj][kk] = 0;
+        box_hit[ii][jj][kk] = 0;
+        box_miss[ii][jj][kk] = 0;
       }
     }
   }
+
+  ray_caster::timestamp(start,
+                        "pre_path"
+                        );
 
   // typedef boost::multi_array<double, 3> array_type;
   // typedef array_type::index index;
@@ -141,13 +145,9 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
   std::vector<int> inds(3);
   std::vector<float> probs(3);
 
-  ray_caster::timestamp(start,
-                        "path_start"
-                        );
-
   cloud_cut = 0;
   cloud_chunk_len = int(floor(ptcld_len / path_len));
-  for(int o = 0; o < 1; ++o)
+  for(int o = 0; o < path_len; ++o)
   {
 
     // Position origin at index within bounding box
@@ -190,7 +190,7 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
     // Iterate through chunk of pointcloud
     for(int p = 0; p < cloud_chunk_len; ++p)
     {
-      // std::cout << p << '\n';
+
       // Position of pointcloud point at index within bounding box
       m_cld_prox = 100;
       for(index i = 0; i < x_pts; ++i)
@@ -254,14 +254,14 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
 
       // Stochastic ray-tracing
       std::random_device rd;
-      // std::mt19937 gen(rd());
+      std::mt19937 gen(rd());
       std::discrete_distribution<> distribution(std::begin(probs), std::end(probs));
 
       while(pt != point_in_cloud)
       {
         f_dist = (point_in_cloud[0] - pt[0])*(point_in_cloud[0] - pt[0]) + (point_in_cloud[1] - pt[1])*(point_in_cloud[1] - pt[1]) + (point_in_cloud[2] - pt[2])*(point_in_cloud[2] - pt[2]);
 
-        pt_ind = distribution(rd);
+        pt_ind = distribution(gen);
         pt[pt_ind] = pt[pt_ind] + direc[pt_ind];
 
         n_dist = (point_in_cloud[0] - pt[0])*(point_in_cloud[0] - pt[0]) + (point_in_cloud[1] - pt[1])*(point_in_cloud[1] - pt[1]) + (point_in_cloud[2] - pt[2])*(point_in_cloud[2] - pt[2]);
@@ -272,18 +272,13 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
         }
         else
         {
-          box_free[pt[0]][pt[1]][pt[2]] = box_free[pt[0]][pt[1]][pt[2]] + 1;
+          box_miss[pt[0]][pt[1]][pt[2]] = box_miss[pt[0]][pt[1]][pt[2]] + 1;
         }
-        // if(pt[pt_ind] == point_in_cloud[pt_ind])
-        // {
-        //   probs[pt_ind] = 0;
-        //   std::discrete_distribution<> distribution(std::begin(probs), std::end(probs));
-        // }
 
       }
 
       // Add hit to box
-      box_occ[pt[0]][pt[1]][pt[2]] = box_occ[pt[0]][pt[1]][pt[2]] + 1;
+      box_hit[pt[0]][pt[1]][pt[2]] = box_hit[pt[0]][pt[1]][pt[2]] + 1;
 
       // Determine unit vector of dir from origin to point
       // max_ax = 0;
@@ -332,7 +327,7 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
       //           {
       //             for(int h = 0; h < 3; ++h)
       //             {
-      //               box_free[x][y][z] = box_free[x][y][z] + 1;
+      //               box_miss[x][y][z] = box_miss[x][y][z] + 1;
       //             }
       //           }
       //         }
@@ -340,7 +335,7 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
       //         {
       //           for(int h = 0; h < 3; ++h)
       //           {
-      //             box_occ[x][y][z] = box_occ[x][y][z] + 1;
+      //             box_hit[x][y][z] = box_hit[x][y][z] + 1;
       //           }
       //         }
       //
@@ -352,26 +347,15 @@ ray_caster::ray_caster(vector< vector<float> > & ptcld,
 
     }
 
-
+    ray_caster::timestamp(start,
+                          "end_path_step"
+                          );
 
   }
 
   ray_caster::timestamp(start,
-                        "path_end"
+                        "post_path"
                         );
-
-  // for(index_3d ii = 0; ii < x_pts; ++ii)
-  // {
-  //   for(index_3d jj = 0; jj < y_pts; ++jj)
-  //   {
-  //     for(index_3d kk = 0; kk < z_pts; ++kk)
-  //     {
-  //       std::cout << box_occ[ii][jj][kk] << ' ';
-  //       std::cout << endl;
-  //       std::cout << box_free[ii][jj][kk] << ' ';
-  //     }
-  //   }
-  // }
 
 }
 

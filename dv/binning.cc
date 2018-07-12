@@ -20,6 +20,9 @@
 
 using namespace std;
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// Simple timestamp function
 void timestamp(double start,
                string checkpt
                )
@@ -55,15 +58,18 @@ void pos_bin_read(string fname_str,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+// For storing pointcloud points
 struct pt
 {
   const float x, y, z;
 };
 
+// Indexing struct for point binning, mapping
 struct ind
 {
   const int x, y, z;
 
+  // Equality comparator overload for unordered_map
   bool operator==(const ind& other
                     ) const
   {
@@ -73,6 +79,7 @@ struct ind
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+// Non-std square function
 float sq(float n
          )
 {
@@ -82,6 +89,7 @@ float sq(float n
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+// Raycasting function; uses discretization to acquire points along ray path
 void cast_ray(pt &origin,
               pt &end,
               float resolution,
@@ -90,11 +98,14 @@ void cast_ray(pt &origin,
 {
   pt dist = {end.x-origin.x, end.y-origin.y, end.z-origin.z};
   float mag = std::sqrt(sq(dist.x) + sq(dist.y) + sq(dist.z));
-  int disc = int(std::ceil(mag/resolution));
+
+  // Floor instead of ceil to dampen chance of mistaken marking of endpt as free
+  int disc = int(std::floor(mag/resolution));
   pt inc = {dist.x / disc, dist.y / disc, dist.z / disc};
 
-  ray.reserve(disc);
-  for(int i = 0; i < disc; ++i)
+  // Do not mark endpt as free
+  ray.reserve(disc-1);
+  for(int i = 0; i < disc-1; ++i)
   {
     ray.push_back({origin.x + inc.x * i, origin.y + inc.y * i, origin.z + inc.z});
   }
@@ -103,7 +114,7 @@ void cast_ray(pt &origin,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-// Hash template
+// Hash template for ind struct
 namespace std
 {
   template<>
@@ -146,9 +157,10 @@ int main(int argc, char **argv)
   timestamp(start,
            "path");
 
-  // unordered_multimap <ind, pt, hasher, key_equal> box;
-  unordered_map <ind, int> box;
-  // boost::unordered_multimap<ind, pt, boost::hash<ind>> box;
+  unordered_map <ind, int> box_free;
+  unordered_map <ind, int> box_occ;
+  unordered_map <ind, int> box_occ_prob;
+  // boost::unordered_multimap<ind, pt, boost::hash<ind>> box_free;
 
   // pt origin = {1.053, -4.234, 0.123};
   // pt end = {2.958, 0.342, -1.001};
@@ -192,26 +204,33 @@ int main(int argc, char **argv)
 
       for(int i = 0; i < ray.size(); ++i)
       {
+        // Mark free space
         int x_ind = (ray[i].x * (1/resolution));
         int y_ind = (ray[i].y * (1/resolution));
         int z_ind = (ray[i].z * (1/resolution));
-        // box.insert( { {x_ind, y_ind, z_ind}, ray[i] } );
-        ++box[ {x_ind, y_ind, z_ind} ];
-        // box_boost.insert( { {x_ind, y_ind}, {ray[i].x, ray[i].y} } );
-
+        ++box_free[ {x_ind, y_ind, z_ind} ];
       }
+
+      // Mark occupied space
+      int x_ind = (end.x * (1/resolution));
+      int y_ind = (end.y * (1/resolution));
+      int z_ind = (end.z * (1/resolution));
+      ++box_occ[ {x_ind, y_ind, z_ind} ];
 
     }
 
     timestamp(start,
-             "path_pt");
+              std::to_string(path_ind));
+
+    // Probabalistic occupancy
+
 
   }
 
   // unordered_multimap <ind, pt, hasher, key_equal> :: iterator it;
 
   // cout << "Unordered multimap contains: " << endl;
-  // for (it = box.begin(); it != box.end(); ++it)
+  // for (it = box_free.begin(); it != box_free.end(); ++it)
   // {
   //
   //   std::cout << "(" << it->first.x << ", " << it->first.y << ", " << it->first.z << " : "

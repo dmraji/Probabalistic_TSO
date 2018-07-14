@@ -36,6 +36,7 @@
 
 // TF2 ROS message handling
 #include "tf2_ros/transform_listener.h"
+#include "tf2_ros/transform_broadcaster.h"
 #include "geometry_msgs/TransformStamped.h"
 // #include "tf2_msgs/TFMessage.h"
 
@@ -79,43 +80,82 @@ void pos_bin_read(string fname_str,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-// ROS callback for TF2 msgs
-void tf2_callback(const ros::MessageEvent< tf2_msgs::TFMessage const > &msg, tf2_ros::Buffer &buf)
+// Instantiate TF2 broadcaster
+class broadcaster
 {
-  // ros::Time now = ros::Time::now();
-  // if(now < tf2_ros::last_update_)
-  // {
-  //   ROS_WARN_STREAM("Detected jump back in time of " << (tf2_ros::last_update_ - now).toSec() << "s. Clearing TF buffer.");
-  //   buffer_.clear();
-  // }
-  // tf2_ros::last_update_ = now;
-  // const tf2_msgs::TFMessage& msg_in = *(msg.getConstMessage());
-  // std::string authority = msg.getPublisherName(); // lookup the authority
-  // for (unsigned int i = 0; i < msg_in.transforms.size(); i++)
-  // {
-  //   try
-  //   {
-  //    buf.setTransform(msg_in.transforms[i], authority, false);
-  //   }
-  //
-  //   catch (tf2::TransformException& ex)
-  //   {
-  //    std::string temp = ex.what();
-  //    ROS_ERROR("Failure to set recieved transform from %s to %s with error: %s\n",  msg_in.transforms[i].child_frame_id.c_str(), msg_in.transforms[i].header.frame_id.c_str(),  temp.c_str());
-  //   }
-  // }
-  geometry_msgs::TransformStamped transformStamped;
-  try
-  {
-    transformStamped = buf.lookupTransform("map", "world", ros::Time(0));
-  }
-  catch (tf2::TransformException &ex)
-  {
-    ROS_WARN("%s",ex.what());
-    // ros::Duration(1.0).sleep();
-  }
-  // ROS_INFO("hi");
+  public:
+    broadcaster();
+
+    tf2_ros::TransformBroadcaster *tf_broadcaster;
+};
+
+broadcaster::broadcaster()
+{
+  tf_broadcaster = new tf2_ros::TransformBroadcaster;
 }
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// Instantiate TF2 listener
+class listener
+{
+  public:
+    listener();
+
+    tf2_ros::Buffer tf_buffer;
+    tf2_ros::TransformListener *tf_listener;
+};
+
+listener::listener()
+{
+  tf_listener = new tf2_ros::TransformListener(tf_buffer);
+}
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// ROS callback for TF2 msgs
+class caller : public listener
+{
+  public:
+    void tf2_callback(const ros::MessageEvent< tf2_msgs::TFMessage const > &msg, tf2_ros::Buffer &buf)
+    {
+      // ros::Time now = ros::Time::now();
+      // if(now < tf2_ros::last_update_)
+      // {
+      //   ROS_WARN_STREAM("Detected jump back in time of " << (tf2_ros::last_update_ - now).toSec() << "s. Clearing TF buffer.");
+      //   buffer_.clear();
+      // }
+      // tf2_ros::last_update_ = now;
+      // const tf2_msgs::TFMessage& msg_in = *(msg.getConstMessage());
+      // std::string authority = msg.getPublisherName(); // lookup the authority
+      // for (unsigned int i = 0; i < msg_in.transforms.size(); i++)
+      // {
+      //   try
+      //   {
+      //    buf.setTransform(msg_in.transforms[i], authority, false);
+      //   }
+      //
+      //   catch (tf2::TransformException& ex)
+      //   {
+      //    std::string temp = ex.what();
+      //    ROS_ERROR("Failure to set recieved transform from %s to %s with error: %s\n",  msg_in.transforms[i].child_frame_id.c_str(), msg_in.transforms[i].header.frame_id.c_str(),  temp.c_str());
+      //   }
+      // }
+      geometry_msgs::TransformStamped transformStamped;
+      try
+      {
+        transformStamped = buf.lookupTransform("map", "world", ros::Time(0), ros::Duration(3.0));
+        ROS_INFO("transform");
+      }
+      catch (tf2::TransformException &ex)
+      {
+        ROS_WARN("%s",ex.what());
+        // exit(1);
+        // ros::Duration(1.0).sleep();
+      }
+      // ROS_INFO("hi");
+    }
+};
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -242,13 +282,15 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "tso");
   ros::NodeHandle nh;
 
-  // Instantiate TF2 listener
-  tf2_ros::Buffer tf_buffer;
-  tf2_ros::TransformListener tf_listener(tf_buffer);
+  // ros::Publisher pub = nh.advertise<std_msgs::String>("rc_out", 100);
 
-  ros::Publisher pub = nh.advertise<std_msgs::String>("rc_out", 100);
+  // Callback object
+  caller CB;
 
-  int bagyes = 1;
+  // Listener object
+  listener L;
+
+  int bagyes = 0;
   if(bagyes == 1)
   {
     // ROS bag
@@ -268,7 +310,7 @@ int main(int argc, char **argv)
       // tf_listener.subscription_callback(m);
 
       tf2_msgs::TFMessage::ConstPtr s_0 = m.instantiate<tf2_msgs::TFMessage>();
-      tf2_callback(s_0, tf_buffer);
+      CB.tf2_callback(s_0, L.tf_buffer);
 
       // if( (m.getTopic() == "/tf") || ("/" + m.getTopic() == "/tf") )
       // {
@@ -286,13 +328,13 @@ int main(int argc, char **argv)
   }
   else
   {
-    ros::Rate rate(10.0);
+    ros::Rate rate(1);
     while (nh.ok())
     {
       geometry_msgs::TransformStamped transform_stamped;
       try
       {
-        transform_stamped = tf_buffer.lookupTransform("map", "base_link", ros::Time(0));
+        transform_stamped = L.tf_buffer.lookupTransform("map", "base_link", ros::Time(0), ros::Duration(3.0));
       }
       catch (tf2::TransformException &ex)
       {

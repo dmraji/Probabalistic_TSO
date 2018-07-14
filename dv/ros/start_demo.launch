@@ -1,0 +1,6 @@
+<launch>
+
+  <node pkg="tso" type="tso_node"
+        name="tso_node" />
+
+</launch>

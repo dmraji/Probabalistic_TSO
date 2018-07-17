@@ -16,8 +16,16 @@
 #include <cmath>
 #include <ctime>
 
+// Boost Libraries
 #include <boost/functional/hash.hpp>
-// #include <boost/unordered_map.hpp>
+
+#include <boost/multi_index_container.hpp>
+#include <boost/multi_index/sequenced_index.hpp>
+#include <boost/multi_index/ordered_index.hpp>
+#include <boost/multi_index/hashed_index.hpp>
+#include <boost/multi_index/composite_key.hpp>
+#include <boost/multi_index/identity.hpp>
+#include <boost/multi_index/member.hpp>
 
 using namespace std;
 
@@ -76,6 +84,33 @@ struct ind
   {
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
+
+  struct x_ord
+  {
+    bool operator()(const ind& a, const ind& b
+                    ) const
+    {
+      return a.x < b.x;
+    }
+  };
+
+  struct y_ord
+  {
+    bool operator()(const ind& a, const ind& b
+                    ) const
+    {
+      return a.y < b.y;
+    }
+  };
+
+  struct z_ord
+  {
+    bool operator()(const ind& a, const ind& b
+                    ) const
+    {
+      return a.z < b.z;
+    }
+  };
 };
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -183,6 +218,38 @@ namespace std
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+struct ind_t
+{
+  const int x, y, z;
+  int hits;
+
+  ind_t(const int x, const int y, const int z, int hits):x(x), y(y), z(z), hits(hits){}
+};
+
+typedef boost::multi_index_container<
+  ind_t,
+  boost::multi_index::indexed_by<
+    boost::multi_index::hashed_non_unique<
+      boost::multi_index::composite_key<
+        ind_t,
+        boost::multi_index::member<ind_t, const int, &ind_t::x>,
+        boost::multi_index::member<ind_t, const int, &ind_t::y>,
+        boost::multi_index::member<ind_t, const int, &ind_t::z>
+      >
+    >,
+    boost::multi_index::ordered_unique<
+      ind_t,
+      boost::multi_index::member<ind_t, const int, &ind_t::x>
+    >
+  >
+> boost_box;
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 int main(int argc, char **argv)
 {
 
@@ -207,9 +274,10 @@ int main(int argc, char **argv)
   timestamp(start,
            "path");
 
-  unordered_map <ind, int> box_free;
-  unordered_map <ind, int> box_occ;
-  unordered_map <ind, float> box_occ_prob;
+
+  std::unordered_map <ind, int> box_free;
+  std::unordered_map <ind, int> box_occ;
+  std::unordered_map <ind, float> box_occ_prob;
   // boost::unordered_multimap<ind, pt, boost::hash<ind>> box_free;
 
   // pt origin = {1.053, -4.234, 0.123};
@@ -236,12 +304,7 @@ int main(int argc, char **argv)
       }
     }
 
-    // std::cout << cloud_cut << '\n';
-
     cloud_cut = cloud_cut + cloud_chunk_len;
-
-
-    std::vector<pt> empty_vec;
 
     for(int cld_ind = 0; cld_ind < cloud_chunk_len; ++cld_ind)
     {
@@ -264,7 +327,8 @@ int main(int argc, char **argv)
         ++box_free[ {x_ind, y_ind, z_ind} ];
       }
 
-      ray.swap(empty_vec);
+      // Ensure that destructor is called on ray vector
+      vector<pt>().swap(ray);
 
       // Mark occupied space
       int x_ind = (end.x * (1/resolution));
@@ -272,7 +336,8 @@ int main(int argc, char **argv)
       int z_ind = (end.z * (1/resolution));
       ++box_occ[ {x_ind, y_ind, z_ind} ];
 
-      // Update occupnacy probability
+      // Update occupancy probability
+      // box_occ_prob[ {x_ind, y_ind, z_ind} ] = f_logf(box_occ[ {x_ind, y_ind, z_ind} ] / (path_ind + 1));
       box_occ_prob[ {x_ind, y_ind, z_ind} ] = f_logf(box_occ[ {x_ind, y_ind, z_ind} ] / (path_ind + 1));
 
     }
@@ -282,14 +347,32 @@ int main(int argc, char **argv)
 
   }
 
-  unordered_multimap <ind, float> :: iterator it;
+  std::unordered_map <ind, int> ::iterator it;
+  int min_x = box_occ.begin()->first.x;
+  int min_y = box_occ.begin()->first.y;
+  int min_z = box_occ.begin()->first.z;
+  int max_x = box_occ.begin()->first.x;
+  int max_y = box_occ.begin()->first.y;
+  int max_z = box_occ.begin()->first.z;
+  for(it = box_occ.begin(); it != box_occ.end(); ++it)
+  {
+    if(it->first.x < min_x) { min_x = it->first.x; }
+    if(it->first.x > max_x) { max_x = it->first.x; }
+    if(it->first.y < min_y) { min_y = it->first.y; }
+    if(it->first.y > max_y) { max_y = it->first.y; }
+    if(it->first.z < min_z) { min_z = it->first.z; }
+    if(it->first.z > max_z) { max_z = it->first.z; }
+  }
+
+  std::cout << max_z << '\n';
+
+  std::unordered_map <ind, float> :: iterator it_fl;
 
   cout << "Unordered multimap contains: " << endl;
-  for (it = box_occ_prob.begin(); it != box_occ_prob.end(); ++it)
+  for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
   {
 
-    std::cout << "(" << it->first.x << ", " << it->first.y << ", " << it->first.z << " : "
-              << it->second << ")" << endl;
+    std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
   }
 
   std::cout << box_occ_prob.size() << '\n';

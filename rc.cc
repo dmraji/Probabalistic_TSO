@@ -99,14 +99,16 @@ float sq(float n
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Implementation of CUDA functions to reinterpret casts
-float __int_as_float(int32_t a)
+float __int_as_float(int32_t a
+                     )
 {
   float r;
   memcpy(&r, &a, sizeof(r));
   return r;
 }
 
-int32_t __float_as_int(float a)
+int32_t __float_as_int(float a
+                       )
 {
   int32_t r;
   memcpy(&r, &a, sizeof(r));
@@ -116,7 +118,8 @@ int32_t __float_as_int(float a)
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Superior natural logarithm
-float f_logf (float a)
+float f_logf(float a
+             )
 {
   float m, r, s, t, i, f;
   int32_t e;
@@ -139,13 +142,19 @@ float f_logf (float a)
   return r;
 }
 
+int f_floor(float a
+            )
+{
+  return (int)(a + 32768.) - 32768;
+}
+
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Raycasting function; uses discretization to acquire points along ray path
 void cast_ray(pt &origin,
               pt &end,
               float resolution,
-              vector<pt> &ray
+              vector<pt> & ray
               )
 {
   pt dist = {end.x-origin.x, end.y-origin.y, end.z-origin.z};
@@ -191,7 +200,23 @@ namespace std
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+void get_vox_cents(std::unordered_map <ind, int> & vox,
+                   std::vector<pt> & cents,
+                   float resolution
+                   )
+{
 
+  // Reserve for centers
+  cents.reserve(vox.size());
+
+  // Construct map iterator; loop through map
+  std::unordered_map <ind, int> ::iterator vox_iterator;
+  for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+  {
+    cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+  }
+
+}
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -294,9 +319,9 @@ int main(int argc, char **argv)
       for(int i = 0; i < ray.size(); ++i)
       {
         // Mark free space
-        int x_ind = (ray[i].x * (1/resolution));
-        int y_ind = (ray[i].y * (1/resolution));
-        int z_ind = (ray[i].z * (1/resolution));
+        int x_ind = f_floor(ray[i].x * (1/resolution));
+        int y_ind = f_floor(ray[i].y * (1/resolution));
+        int z_ind = f_floor(ray[i].z * (1/resolution));
         ++box_free[ {x_ind, y_ind, z_ind} ];
       }
 
@@ -304,9 +329,9 @@ int main(int argc, char **argv)
       vector<pt>().swap(ray);
 
       // Mark occupied space
-      int x_ind = (end.x * (1/resolution));
-      int y_ind = (end.y * (1/resolution));
-      int z_ind = (end.z * (1/resolution));
+      int x_ind = f_floor(end.x * (1/resolution));
+      int y_ind = f_floor(end.y * (1/resolution));
+      int z_ind = f_floor(end.z * (1/resolution));
       ++box_occ[ {x_ind, y_ind, z_ind} ];
 
       // Update occupancy probability
@@ -371,6 +396,17 @@ int main(int argc, char **argv)
   // }
 
   std::cout << box_occ_prob.size() << '\n';
+
+  std::vector<pt> cents_occ;
+  get_vox_cents(box_occ,
+                cents_occ,
+                resolution
+                );
+
+  // for(int i = 0; i < cents_occ.size(); ++i)
+  // {
+  //    std::cout << "(" << cents_occ[i].x << ", " << cents_occ[i].y << ", " << cents_occ[i].z << ")" << '\n';
+  // }
 
   timestamp(start,
             "end"

@@ -1,4 +1,3 @@
-#include <fstream>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -43,6 +42,8 @@ void timestamp(double start,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+bool is_zero(float a) { return a == 0; }
+
 // Read binary pos files
 void pos_bin_read(string fname_str,
                   vector< vector<float> > & pos
@@ -50,7 +51,7 @@ void pos_bin_read(string fname_str,
 {
 
   float f;
-  ifstream fin(fname_str, ios::binary);
+  ifstream fin(fname_str, std::ios::in | std::ios::binary);
   int r_ind = 0;
   int c_ind = 0;
   while(fin.read(reinterpret_cast<char*>(&f), sizeof(float)))
@@ -142,6 +143,9 @@ float f_logf(float a
   return r;
 }
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// Faster floor function
 int f_floor(float a
             )
 {
@@ -205,7 +209,6 @@ void get_vox_cents(std::unordered_map <ind, int> & vox,
                    float resolution
                    )
 {
-
   // Reserve for centers
   cents.reserve(vox.size());
 
@@ -216,6 +219,21 @@ void get_vox_cents(std::unordered_map <ind, int> & vox,
     cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
   }
 
+}
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+void write_cents(std::vector<pt> & cents,
+                 std::string filename
+                 )
+{
+  std::ofstream file;
+  file.open(filename+".txt");
+  for(int i = 0; i < cents.size(); ++i)
+  {
+    file << cents[i].x << ", " << cents[i].y << ", " << cents[i].z << "\n";
+  }
+  file.close();
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -250,15 +268,14 @@ void get_vox_cents(std::unordered_map <ind, int> & vox,
 
 int main(int argc, char **argv)
 {
-
   std::clock_t start;
   start = std::clock();
 
   int path_len = 525;
-  std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0.));
+  std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0.0f));
 
   int ptcld_len = 14563019;
-  std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0.));
+  std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0.0f));
 
   pos_bin_read("ptcld.bin",
                ptcld);
@@ -274,8 +291,11 @@ int main(int argc, char **argv)
 
 
   std::unordered_map <ind, int> box_free;
+  std::unordered_map <ind, int> occ_per_pose;
+  std::unordered_map <ind, int> occ_initial_entries;
   std::unordered_map <ind, int> box_occ;
   std::unordered_map <ind, float> box_occ_prob;
+  std::unordered_map <ind, int> box_unknown;
   // boost::unordered_multimap<ind, pt, boost::hash<ind>> box_free;
 
   // pt origin = {1.053, -4.234, 0.123};
@@ -283,16 +303,16 @@ int main(int argc, char **argv)
 
   float resolution = 0.1;
 
+  int cloud_cut = 0;
+  int cloud_chunk_len = int(floor(ptcld_len / path_len));
+
   for(int path_ind = 0; path_ind < path_len; ++path_ind)
   {
 
     pt origin = {path[path_ind][0], path[path_ind][1], path[path_ind][2]};
 
-    int cloud_cut = 0;
-    int cloud_chunk_len = int(floor(ptcld_len / path_len));
-
     // Build chunk of ptcld
-    std::vector< std::vector<float> > ptcld_chunk(cloud_chunk_len, std::vector<float>(3, 0.));
+    std::vector< std::vector<float> > ptcld_chunk(cloud_chunk_len, std::vector<float>(3, 0.0f));
 
     for(int i = 0; i < cloud_chunk_len; ++i)
     {
@@ -328,15 +348,92 @@ int main(int argc, char **argv)
       // Ensure that destructor is called on ray vector
       vector<pt>().swap(ray);
 
-      // Mark occupied space
+      // Mark occupied space in temporary map
       int x_ind = f_floor(end.x * (1/resolution));
       int y_ind = f_floor(end.y * (1/resolution));
       int z_ind = f_floor(end.z * (1/resolution));
-      ++box_occ[ {x_ind, y_ind, z_ind} ];
+      ++occ_per_pose[ {x_ind, y_ind, z_ind} ];
 
       // Update occupancy probability
       // box_occ_prob[ {x_ind, y_ind, z_ind} ] = f_logf(box_occ[ {x_ind, y_ind, z_ind} ] / (path_ind + 1));
-      box_occ_prob[ {x_ind, y_ind, z_ind} ] = f_logf(box_occ[ {x_ind, y_ind, z_ind} ] / (path_ind + 1));
+
+    }
+
+    // Update permanent occupancy map
+    float mean_probability = 0.0f;
+    std::unordered_map <ind, int> ::iterator it_pp;
+    for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
+    {
+      ++occ_initial_entries[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
+
+      // ++box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
+      //
+      // box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] = (float)(box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] / (float)(path_ind+1));
+      //
+      // mean_probability = mean_probability + box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
+
+      // std::cout << box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] << '\n';
+    }
+
+    mean_probability = mean_probability / occ_per_pose.size();
+
+    // Reset temporary occupancy map
+    occ_per_pose.clear();
+
+    // Cull occupied space according to occupancy probability
+    // Provide buffer to give time for probability to become reliable;
+    if(path_ind > 150)
+    {
+
+      std::unordered_map <ind, float> ::iterator it_cull;
+      for(it_cull = box_occ_prob.begin(); it_cull != box_occ_prob.end(); ++it_cull)
+      {
+        if(box_occ_prob[ {it_cull->first.x, it_cull->first.y, it_cull->first.z} ] < (1.0f *   mean_probability))
+        {
+          // std::cout << "erased" << '\n';
+          box_occ.erase( {it_cull->first.x, it_cull->first.y, it_cull->first.z} );
+        }
+      }
+
+      // Update unkown voxels
+      box_unknown.clear();
+
+      std::unordered_map <ind, int> ::iterator it_bbx;
+      int min_x = box_occ.begin()->first.x;
+      int min_y = box_occ.begin()->first.y;
+      int min_z = box_occ.begin()->first.z;
+      int max_x = box_occ.begin()->first.x;
+      int max_y = box_occ.begin()->first.y;
+      int max_z = box_occ.begin()->first.z;
+      for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
+      {
+        if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
+        if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
+        if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
+        if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
+        if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
+        if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
+      }
+
+      // Iterate through bounding box
+      for(int x_i = min_x; x_i < max_x; ++x_i)
+      {
+        for(int y_i = min_y; y_i < max_y; ++y_i)
+        {
+          for(int z_i = min_z; z_i < max_z; ++z_i)
+          {
+            if(box_free.count( {x_i, y_i, z_i} ) == 0)
+            {
+              if(box_occ.count( {x_i, y_i, z_i} ) == 0)
+              {
+                // Store unknown voxel indecies
+                ++box_unknown[ {x_i, y_i, z_i} ];
+                // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
+              }
+            }
+          }
+        }
+      }
 
     }
 
@@ -345,49 +442,7 @@ int main(int argc, char **argv)
 
   }
 
-  std::unordered_map <ind, int> ::iterator it_bbx;
-  int min_x = box_occ.begin()->first.x;
-  int min_y = box_occ.begin()->first.y;
-  int min_z = box_occ.begin()->first.z;
-  int max_x = box_occ.begin()->first.x;
-  int max_y = box_occ.begin()->first.y;
-  int max_z = box_occ.begin()->first.z;
-  for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
-  {
-    if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
-    if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
-    if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
-    if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
-    if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
-    if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
-  }
-
-  std::unordered_map <ind, int> box_unknown;
-
-  // Iterate through bounding box
-  for(int x_i = min_x; x_i < max_x; ++x_i)
-  {
-    for(int y_i = min_y; y_i < max_y; ++y_i)
-    {
-      for(int z_i = min_z; z_i < max_z; ++z_i)
-      {
-        if(box_free.count( {x_i, y_i, z_i} ) == 0)
-        {
-          if(box_occ.count( {x_i, y_i, z_i} ) == 0)
-          {
-            ++box_unknown[ {x_i, y_i, z_i} ];
-            // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
-          }
-        }
-      }
-    }
-  }
-
-  std::cout << box_unknown.size() << '\n';
-  std::cout << box_free.size() << '\n';
-
-  std::unordered_map <ind, float> :: iterator it_fl;
-
+  // std::unordered_map <ind, float> :: iterator it_fl;
   // cout << "Unordered multimap contains: " << endl;
   // for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
   // {
@@ -395,18 +450,51 @@ int main(int argc, char **argv)
   //   std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
   // }
 
-  std::cout << box_occ_prob.size() << '\n';
+  std::cout << "free voxels: " << box_free.size() << '\n';
+  std::cout << "occupied voxels: " << box_occ.size() << '\n';
+  std::cout << "unknown voxels: " << box_unknown.size() << '\n';
 
   std::vector<pt> cents_occ;
+  std::vector<pt> cents_free;
+  std::vector<pt> cents_unknown;
+
   get_vox_cents(box_occ,
                 cents_occ,
                 resolution
                 );
 
+  get_vox_cents(box_free,
+                cents_free,
+                resolution
+                );
+
+  if(path_len > 150)
+  {
+    get_vox_cents(box_unknown,
+                  cents_unknown,
+                  resolution
+                  );
+  }
+
   // for(int i = 0; i < cents_occ.size(); ++i)
   // {
   //    std::cout << "(" << cents_occ[i].x << ", " << cents_occ[i].y << ", " << cents_occ[i].z << ")" << '\n';
   // }
+
+  write_cents(cents_occ,
+              "occupied"
+              );
+
+  write_cents(cents_free,
+              "free"
+              );
+
+  if(path_len > 150)
+  {
+    write_cents(cents_unknown,
+                "unknown"
+                );
+  }
 
   timestamp(start,
             "end"

@@ -84,33 +84,6 @@ struct ind
   {
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
-
-  struct x_ord
-  {
-    bool operator()(const ind& a, const ind& b
-                    ) const
-    {
-      return a.x < b.x;
-    }
-  };
-
-  struct y_ord
-  {
-    bool operator()(const ind& a, const ind& b
-                    ) const
-    {
-      return a.y < b.y;
-    }
-  };
-
-  struct z_ord
-  {
-    bool operator()(const ind& a, const ind& b
-                    ) const
-    {
-      return a.z < b.z;
-    }
-  };
 };
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -222,31 +195,31 @@ namespace std
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-struct ind_t
-{
-  const int x, y, z;
-  int hits;
-
-  ind_t(const int x, const int y, const int z, int hits):x(x), y(y), z(z), hits(hits){}
-};
-
-typedef boost::multi_index_container<
-  ind_t,
-  boost::multi_index::indexed_by<
-    boost::multi_index::hashed_non_unique<
-      boost::multi_index::composite_key<
-        ind_t,
-        boost::multi_index::member<ind_t, const int, &ind_t::x>,
-        boost::multi_index::member<ind_t, const int, &ind_t::y>,
-        boost::multi_index::member<ind_t, const int, &ind_t::z>
-      >
-    >,
-    boost::multi_index::ordered_unique<
-      ind_t,
-      boost::multi_index::member<ind_t, const int, &ind_t::x>
-    >
-  >
-> boost_box;
+// struct ind_t
+// {
+//   const int x, y, z;
+//   int hits;
+//
+//   ind_t(const int x, const int y, const int z, int hits):x(x), y(y), z(z), hits(hits){}
+// };
+//
+// typedef boost::multi_index_container<
+//   ind_t,
+//   boost::multi_index::indexed_by<
+//     boost::multi_index::hashed_non_unique<
+//       boost::multi_index::composite_key<
+//         ind_t,
+//         boost::multi_index::member<ind_t, const int, &ind_t::x>,
+//         boost::multi_index::member<ind_t, const int, &ind_t::y>,
+//         boost::multi_index::member<ind_t, const int, &ind_t::z>
+//       >
+//     >,
+//     boost::multi_index::ordered_unique<
+//       ind_t,
+//       boost::multi_index::member<ind_t, const int, &ind_t::x>
+//     >
+//   >
+// > boost_box;
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -347,33 +320,55 @@ int main(int argc, char **argv)
 
   }
 
-  std::unordered_map <ind, int> ::iterator it;
+  std::unordered_map <ind, int> ::iterator it_bbx;
   int min_x = box_occ.begin()->first.x;
   int min_y = box_occ.begin()->first.y;
   int min_z = box_occ.begin()->first.z;
   int max_x = box_occ.begin()->first.x;
   int max_y = box_occ.begin()->first.y;
   int max_z = box_occ.begin()->first.z;
-  for(it = box_occ.begin(); it != box_occ.end(); ++it)
+  for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
   {
-    if(it->first.x < min_x) { min_x = it->first.x; }
-    if(it->first.x > max_x) { max_x = it->first.x; }
-    if(it->first.y < min_y) { min_y = it->first.y; }
-    if(it->first.y > max_y) { max_y = it->first.y; }
-    if(it->first.z < min_z) { min_z = it->first.z; }
-    if(it->first.z > max_z) { max_z = it->first.z; }
+    if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
+    if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
+    if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
+    if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
+    if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
+    if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
   }
 
-  std::cout << max_z << '\n';
+  std::unordered_map <ind, int> box_unknown;
+
+  // Iterate through bounding box
+  for(int x_i = min_x; x_i < max_x; ++x_i)
+  {
+    for(int y_i = min_y; y_i < max_y; ++y_i)
+    {
+      for(int z_i = min_z; z_i < max_z; ++z_i)
+      {
+        if(box_free.count( {x_i, y_i, z_i} ) == 0)
+        {
+          if(box_occ.count( {x_i, y_i, z_i} ) == 0)
+          {
+            ++box_unknown[ {x_i, y_i, z_i} ];
+            // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
+          }
+        }
+      }
+    }
+  }
+
+  std::cout << box_unknown.size() << '\n';
+  std::cout << box_free.size() << '\n';
 
   std::unordered_map <ind, float> :: iterator it_fl;
 
-  cout << "Unordered multimap contains: " << endl;
-  for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
-  {
-
-    std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
-  }
+  // cout << "Unordered multimap contains: " << endl;
+  // for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
+  // {
+  //
+  //   std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
+  // }
 
   std::cout << box_occ_prob.size() << '\n';
 

@@ -2,17 +2,18 @@ cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 set (CMAKE_CXX_STANDARD 11)
 
 # setting a variable equal to the executable name
-set(name rc_main)
+set(name rc)
 
 # name the project
-project(lw-rc)
+project(rc)
 
 # get the implementation files
-file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
+#file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
 
 # get the header files
-file(GLOB headers ${PROJECT_SOURCE_DIR}/incl/*.hh)
-include_directories(${PROJECT_SOURCE_DIR}/incl)
+#file(GLOB headers ${PROJECT_SOURCE_DIR}/incl/*.hh)
+#include_directories(${PROJECT_SOURCE_DIR}/incl)
 
 # create the executable
-add_executable(${name} ${name}.cc ${sources} ${headers})
+#add_executable(${name} ${name}.cc ${sources} ${headers})
+add_executable(${name} ${name}.cc)

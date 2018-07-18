@@ -42,6 +42,7 @@ void timestamp(double start,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+
 bool is_zero(float a) { return a == 0; }
 
 // Read binary pos files

@@ -42,10 +42,6 @@ void timestamp(double start,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-<<<<<<< HEAD
-
-=======
->>>>>>> df9f5036537704360ebfe330f695098e14b539eb
 bool is_zero(float a) { return a == 0; }
 
 // Read binary pos files
@@ -323,11 +319,8 @@ int main(int argc, char **argv)
 
   std::unordered_map <ind, int> box_free;
   std::unordered_map <ind, int> occ_per_pose;
-<<<<<<< HEAD
   std::unordered_map <ind_dated, int> occ_staging;
-=======
   std::unordered_map <ind, int> occ_initial_entries;
->>>>>>> df9f5036537704360ebfe330f695098e14b539eb
   std::unordered_map <ind, int> box_occ;
   std::unordered_map <ind, float> box_occ_prob;
   std::unordered_map <ind, int> box_unknown;
@@ -399,8 +392,7 @@ int main(int argc, char **argv)
     std::unordered_map <ind, int> ::iterator it_pp;
     for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
     {
-<<<<<<< HEAD
-      // Need a "staging" map for theoretically occupied voxels
+      // "staging" map for occupied voxels while data is gathered over pose iterations
       ind_dated cpt_dated = {it_pp->first.x, it_pp->first.y, it_pp->first.z, path_ind};
       ++occ_staging[cpt_dated];
 
@@ -413,12 +405,17 @@ int main(int argc, char **argv)
       // std::cout << box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] << '\n';
     }
 
-    // Comb staging map for transfer candidates
+    // Transfer candidates when "old" enough
     std::unordered_map <ind_d, int> ::iterator it_check;
     for(it_check = occ_staging.begin(); it_check != occ_staging.end(); ++it_check)
     {
-      ind_dated cpt_dated = {it_check->first.x, it_check->first.y, it_check->first.z};
-      if(occ_staging[cpt_dated] > )
+      ind_dated cpt_dated = {it_check->first.x, it_check->first.y, it_check->first.z, it_check->first.arrival};
+      if(path_ind - cpt_dated.arrival > 100)
+      {
+        ++box_occ[ {cpt_dated.x, cpt_dated.y, cpt_dated.z} ];
+        box_occ_prob[ {cpt_dated.x, cpt_dated.y, cpt_dated.z} ] = (float)(occ_staging)
+
+      }
     }
 
 
@@ -489,7 +486,6 @@ int main(int argc, char **argv)
 
   }
 
-=======
       ++occ_initial_entries[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
 
       // ++box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
@@ -568,7 +564,6 @@ int main(int argc, char **argv)
 
   }
 
->>>>>>> df9f5036537704360ebfe330f695098e14b539eb
   // std::unordered_map <ind, float> :: iterator it_fl;
   // cout << "Unordered multimap contains: " << endl;
   // for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)

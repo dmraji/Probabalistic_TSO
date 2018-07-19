@@ -87,18 +87,13 @@ struct ind
   }
 };
 
-struct ind_dated
+// Occupied voxel data
+struct occ_data
 {
-  const int x, y, z;
-  int arrival;
-
-  // Equality comparator overload for unordered_map
-  bool operator==(const ind& other
-                    ) const
-  {
-    return (x == other.x) && (y == other.y) && (z == other.z);
-  }
-}
+  int hits;
+  const int discovery;
+  float probability;
+};
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -108,52 +103,6 @@ float sq(float n
 {
   float m = n*n;
   return m;
-}
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Implementation of CUDA functions to reinterpret casts
-float __int_as_float(int32_t a
-                     )
-{
-  float r;
-  memcpy(&r, &a, sizeof(r));
-  return r;
-}
-
-int32_t __float_as_int(float a
-                       )
-{
-  int32_t r;
-  memcpy(&r, &a, sizeof(r));
-  return r;
-}
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Superior natural logarithm
-float f_logf(float a
-             )
-{
-  float m, r, s, t, i, f;
-  int32_t e;
-
-  e = (__float_as_int(a) - 0x3f2aaaab) & 0xff800000;
-  m = __int_as_float(__float_as_int(a) - e);
-  i = (float)e * 1.19209290e-7f; // 0x1.0p-23
-
-  /* m in [2/3, 4/3] */
-  f = m - 1.0f;
-  s = f * f;
-
-  /* Compute log1p(f) for f in [-1/3, 1/3] */
-  r = fmaf(0.230836749f, f, -0.279208571f); // 0x1.d8c0f0p-3, -0x1.1de8dap-2
-  t = fmaf(0.331826031f, f, -0.498910338f); // 0x1.53ca34p-2, -0x1.fee25ap-2
-  r = fmaf(r, s, t);
-  r = fmaf(r, s, f);
-  r = fmaf(i, 0.693147182f, r); // 0x1.62e430p-1 // log(2)
-
-  return r;
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -213,20 +162,6 @@ namespace std
         return seed;
       }
     };
-
-    struct hash<ind_dated>
-    {
-      size_t operator()(const ind& index
-                        ) const
-      {
-        size_t seed = 0;
-        boost::hash_combine(seed, index.x);
-        boost::hash_combine(seed, index.y);
-        boost::hash_combine(seed, index.z);
-        boost::hash_combine(seed, index.arrival);
-        return seed;
-      }
-    }
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -319,10 +254,7 @@ int main(int argc, char **argv)
 
   std::unordered_map <ind, int> box_free;
   std::unordered_map <ind, int> occ_per_pose;
-  std::unordered_map <ind_dated, int> occ_staging;
-  std::unordered_map <ind, int> occ_initial_entries;
-  std::unordered_map <ind, int> box_occ;
-  std::unordered_map <ind, float> box_occ_prob;
+  std::unordered_map <ind, occ_data> box_occ;
   std::unordered_map <ind, int> box_unknown;
   // boost::unordered_multimap<ind, pt, boost::hash<ind>> box_free;
 
@@ -392,9 +324,12 @@ int main(int argc, char **argv)
     std::unordered_map <ind, int> ::iterator it_pp;
     for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
     {
-      // "staging" map for occupied voxels while data is gathered over pose iterations
-      ind_dated cpt_dated = {it_pp->first.x, it_pp->first.y, it_pp->first.z, path_ind};
-      ++occ_staging[cpt_dated];
+      ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
+      if(box_occ.count(cpt) == 0)
+      {
+        box_occ[cpt].discovery = path_ind;
+      }
+      ++box_occ[cpt].hits;
 
       // ++box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
       //
@@ -406,80 +341,78 @@ int main(int argc, char **argv)
     }
 
     // Transfer candidates when "old" enough
-    std::unordered_map <ind_d, int> ::iterator it_check;
-    for(it_check = occ_staging.begin(); it_check != occ_staging.end(); ++it_check)
+    std::unordered_map <ind, occ_data> ::iterator it_check;
+    int aged_ct = 0;
+    for(it_check = box_occ.begin(); it_check != box_occ.end(); ++it_check)
     {
-      ind_dated cpt_dated = {it_check->first.x, it_check->first.y, it_check->first.z, it_check->first.arrival};
-      if(path_ind - cpt_dated.arrival > 100)
+      ind cpt = {it_check->first.x, it_check->first.y, it_check->first.z};
+      int lifetime = path_ind - box_occ[cpt].discovery;
+      if(lifetime > 50)
       {
-        ++box_occ[ {cpt_dated.x, cpt_dated.y, cpt_dated.z} ];
-        box_occ_prob[ {cpt_dated.x, cpt_dated.y, cpt_dated.z} ] = (float)(occ_staging)
-
+        box_occ[cpt].probability = box_occ[cpt].hits / lifetime;
+        mean_probability = mean_probability + box_occ[cpt].probability;
+        ++aged_ct;
       }
     }
 
+    mean_probability = mean_probability / aged_ct;
 
-    // mean_probability = mean_probability / occ_per_pose.size();
-    //
     // Reset temporary occupancy map
     occ_per_pose.clear();
 
     // Cull occupied space according to occupancy probability
-    // Provide buffer to give time for probability to become reliable;
-    // if(path_ind > 150)
-    // {
-    //
-    //   std::unordered_map <ind, float> ::iterator it_cull;
-    //   for(it_cull = box_occ_prob.begin(); it_cull != box_occ_prob.end(); ++it_cull)
-    //   {
-    //     if(box_occ_prob[ {it_cull->first.x, it_cull->first.y, it_cull->first.z} ] < (1.0f *   mean_probability))
-    //     {
-    //       // std::cout << "erased" << '\n';
-    //       box_occ.erase( {it_cull->first.x, it_cull->first.y, it_cull->first.z} );
-    //     }
-    //   }
-    //
-    //   // Update unkown voxels
-    //   box_unknown.clear();
-    //
-    //   std::unordered_map <ind, int> ::iterator it_bbx;
-    //   int min_x = box_occ.begin()->first.x;
-    //   int min_y = box_occ.begin()->first.y;
-    //   int min_z = box_occ.begin()->first.z;
-    //   int max_x = box_occ.begin()->first.x;
-    //   int max_y = box_occ.begin()->first.y;
-    //   int max_z = box_occ.begin()->first.z;
-    //   for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
-    //   {
-    //     if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
-    //     if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
-    //     if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
-    //     if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
-    //     if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
-    //     if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
-    //   }
-    //
-    //   // Iterate through bounding box
-    //   for(int x_i = min_x; x_i < max_x; ++x_i)
-    //   {
-    //     for(int y_i = min_y; y_i < max_y; ++y_i)
-    //     {
-    //       for(int z_i = min_z; z_i < max_z; ++z_i)
-    //       {
-    //         if(box_free.count( {x_i, y_i, z_i} ) == 0)
-    //         {
-    //           if(box_occ.count( {x_i, y_i, z_i} ) == 0)
-    //           {
-    //             // Store unknown voxel indecies
-    //             ++box_unknown[ {x_i, y_i, z_i} ];
-    //             // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
-    //           }
-    //         }
-    //       }
-    //     }
-    //   }
-    //
-    // }
+    std::unordered_map <ind, occ_data> ::iterator it_cull;
+    for(it_cull = box_occ.begin(); it_cull != box_occ.end(); ++it_cull)
+    {
+      ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
+      if(box_occ[cpt].probability < (0.5f * mean_probability))
+      {
+        // std::cout << "erased" << '\n';
+        box_occ.erase(cpt);
+      }
+    }
+
+    // Update unkown voxels
+    box_unknown.clear();
+
+    std::unordered_map <ind, int> ::iterator it_bbx;
+    int min_x = box_occ.begin()->first.x;
+    int min_y = box_occ.begin()->first.y;
+    int min_z = box_occ.begin()->first.z;
+    int max_x = box_occ.begin()->first.x;
+    int max_y = box_occ.begin()->first.y;
+    int max_z = box_occ.begin()->first.z;
+    for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
+    {
+      if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
+      if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
+      if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
+      if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
+      if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
+      if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
+    }
+
+    // Iterate through bounding box
+    for(int x_i = min_x; x_i < max_x; ++x_i)
+    {
+      for(int y_i = min_y; y_i < max_y; ++y_i)
+      {
+        for(int z_i = min_z; z_i < max_z; ++z_i)
+        {
+          if(box_free.count( {x_i, y_i, z_i} ) == 0)
+          {
+            if(box_occ.count( {x_i, y_i, z_i} ) == 0)
+            {
+              // Store unknown voxel indecies
+              ++box_unknown[ {x_i, y_i, z_i} ];
+              // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
+            }
+          }
+        }
+      }
+    }
+
+
 
     timestamp(start,
               std::to_string(path_ind));

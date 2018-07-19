@@ -427,12 +427,16 @@ int main(int argc, char **argv)
     {
       if(box_occ[ {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z} ].mask)
       {
-        int x_v = it_bbx->first.x;
-        int y_v = it_bbx->first.y;
-        int z_v = it_bbx->first.z;
-        if(x_v < min_x) { min_x = x_v; } else if (x_v > max_x) { max_x = x_v; }
-        if(y_v < min_y) { min_y = y_v; } else if (y_v > max_y) { max_y = y_v; }
-        if(z_v < min_z) { min_z = z_v; } else if (z_v > max_z) { max_z = z_v; }
+        ind cpt = {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z};
+        if(box_occ[cpt].probability > (8.0f * mean_probability))
+        {
+          int x_v = cpt.x;
+          int y_v = cpt.y;
+          int z_v = cpt.z;
+          if(x_v < min_x) { min_x = x_v; } else if (x_v > max_x) { max_x = x_v; }
+          if(y_v < min_y) { min_y = y_v; } else if (y_v > max_y) { max_y = y_v; }
+          if(z_v < min_z) { min_z = z_v; } else if (z_v > max_z) { max_z = z_v; }
+        }
       }
     }
 
@@ -445,8 +449,8 @@ int main(int argc, char **argv)
         {
           if(box_free.count( {x_i, y_i, z_i} ) == 0)
           {
-            // if(!box_occ[ {x_i, y_i, z_i} ].mask)
-            if(box_occ.find( {x_i, y_i, z_i} ) == box_occ.end())
+            if(!box_occ[ {x_i, y_i, z_i} ].mask)
+            // if(box_occ.find( {x_i, y_i, z_i} ) == box_occ.end())
             {
               // Store unknown voxel indecies
               ++box_unknown[ {x_i, y_i, z_i} ];
@@ -480,6 +484,13 @@ int main(int argc, char **argv)
 
   }
 
+  // std::unordered_map <ind, int> ::iterator it_unk_cull;
+  // for(it_unk_cull == box_unknown.begin(); it_unk_cull != box_unknown.end(); ++it_unk_cull)
+  // {
+  //   ind cpt = {it_unk_cull->first.x, it_unk_cull->first.y, it_unk_cull->first.z};
+  //   if()
+  // }
+
   // std::unordered_map <ind, float> :: iterator it_fl;
   // cout << "Unordered multimap contains: " << endl;
   // for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
@@ -487,8 +498,6 @@ int main(int argc, char **argv)
   //
   //   std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
   // }
-
-
 
   std::cout << "free voxels: " << box_free.size() << '\n';
   std::cout << "occupied voxels: " << box_occ.size() << '\n';

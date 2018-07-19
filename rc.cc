@@ -87,12 +87,31 @@ struct ind
   }
 };
 
+// Hash template for ind struct
+namespace std
+{
+  template<>
+    struct hash<ind>
+    {
+      size_t operator()(const ind& index
+                        ) const
+      {
+        size_t seed = 0;
+        boost::hash_combine(seed, index.x);
+        boost::hash_combine(seed, index.y);
+        boost::hash_combine(seed, index.z);
+        return seed;
+      }
+    };
+}
+
 // Occupied voxel data
 struct occ_data
 {
   int hits;
-  const int discovery;
+  // int discovery;
   float probability;
+  bool mask;
 };
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -146,26 +165,7 @@ void cast_ray(pt &origin,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-// Hash template for ind struct
-namespace std
-{
-  template<>
-    struct hash<ind>
-    {
-      size_t operator()(const ind& index
-                        ) const
-      {
-        size_t seed = 0;
-        boost::hash_combine(seed, index.x);
-        boost::hash_combine(seed, index.y);
-        boost::hash_combine(seed, index.z);
-        return seed;
-      }
-    };
-}
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
+// Parse hash tables (maps) to get real-space centers of voxels
 void get_vox_cents(std::unordered_map <ind, int> & vox,
                    std::vector<pt> & cents,
                    float resolution
@@ -183,8 +183,29 @@ void get_vox_cents(std::unordered_map <ind, int> & vox,
 
 }
 
+template <typename T>
+  void get_masked_cents(std::unordered_map <ind, T> & vox,
+                        std::vector<pt> & cents,
+                        float resolution
+                        )
+  {
+    // Reserve for centers
+    cents.reserve(vox.size());
+
+    // Construct map iterator; loop through map
+    typename std::unordered_map <ind, T> ::iterator vox_iterator;
+    for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+    {
+      if(vox_iterator->second.mask)
+      {
+        cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+      }
+    }
+  }
+
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+// Write voxel centers to file
 void write_cents(std::vector<pt> & cents,
                  std::string filename
                  )
@@ -320,16 +341,18 @@ int main(int argc, char **argv)
     }
 
     // Update permanent occupancy map
-    float mean_probability = 0.0f;
+
     std::unordered_map <ind, int> ::iterator it_pp;
     for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
     {
       ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
       if(box_occ.count(cpt) == 0)
       {
-        box_occ[cpt].discovery = path_ind;
+        // box_occ[cpt].discovery = path_ind;
+        box_occ[cpt].mask = false;
       }
       ++box_occ[cpt].hits;
+      box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
 
       // ++box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
       //
@@ -341,34 +364,52 @@ int main(int argc, char **argv)
     }
 
     // Transfer candidates when "old" enough
-    std::unordered_map <ind, occ_data> ::iterator it_check;
-    int aged_ct = 0;
-    for(it_check = box_occ.begin(); it_check != box_occ.end(); ++it_check)
+    // std::unordered_map <ind, occ_data> ::iterator it_check;
+    // int aged_ct = 0;
+    // for(it_check = box_occ.begin(); it_check != box_occ.end(); ++it_check)
+    // {
+    //   ind cpt = {it_check->first.x, it_check->first.y, it_check->first.z};
+    //   int lifetime = path_ind - box_occ[cpt].discovery;
+    //   if(lifetime > 100)
+    //   {
+    //     box_occ[cpt].probability = box_occ[cpt].hits / lifetime;
+    //     mean_probability = mean_probability + box_occ[cpt].probability;
+    //     ++aged_ct;
+    //   }
+    // }
+
+    float mean_probability = 0.0f;
+    std::unordered_map <ind, occ_data> ::iterator it_prob;
+    for(it_prob = box_occ.begin(); it_prob != box_occ.end(); ++it_prob)
     {
-      ind cpt = {it_check->first.x, it_check->first.y, it_check->first.z};
-      int lifetime = path_ind - box_occ[cpt].discovery;
-      if(lifetime > 50)
-      {
-        box_occ[cpt].probability = box_occ[cpt].hits / lifetime;
-        mean_probability = mean_probability + box_occ[cpt].probability;
-        ++aged_ct;
-      }
+      mean_probability = mean_probability + it_prob->second.probability;
     }
 
-    mean_probability = mean_probability / aged_ct;
+    mean_probability = mean_probability / box_occ.size();
+    // std::cout << mean_probability << '\n';
 
     // Reset temporary occupancy map
     occ_per_pose.clear();
 
     // Cull occupied space according to occupancy probability
     std::unordered_map <ind, occ_data> ::iterator it_cull;
+    // std::vector<ind> cull_list;
+
+    float threshold = 5.0f;
     for(it_cull = box_occ.begin(); it_cull != box_occ.end(); ++it_cull)
     {
       ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
-      if(box_occ[cpt].probability < (0.5f * mean_probability))
+      // std::cout << box_occ[cpt].hits << '\n';
+      // int lifetime = path_ind - box_occ[cpt].discovery;
+      if((box_occ[cpt].probability > (threshold * mean_probability)))// && (lifetime > 100))
       {
-        // std::cout << "erased" << '\n';
-        box_occ.erase(cpt);
+        // cull_list.push_back(cpt);
+        box_occ[cpt].mask = true;
+      }
+      if((box_occ[cpt].probability < (threshold * mean_probability)))
+      {
+        // cull_list.push_back(cpt);
+        box_occ[cpt].mask = false;
       }
     }
 
@@ -384,13 +425,15 @@ int main(int argc, char **argv)
     int max_z = box_occ.begin()->first.z;
     for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
     {
-      int x_v = it_bbx->first.x;
-      int y_v = it_bbx->first.y;
-      int z_v = it_bbx->first.z;
-      (x_v < min_x) ? min_x = x_v : ((x_v > max_x) ? max_x = x_v : ;);
-      (y_v < min_y) ? min_y = y_v : ((y_v > max_y) ? max_y = y_v : ;);
-      (z_v < min_z) ? min_z = z_v : ((z_v > max_z) ? max_z = z_v : ;);
-
+      if(box_occ[ {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z} ].mask)
+      {
+        int x_v = it_bbx->first.x;
+        int y_v = it_bbx->first.y;
+        int z_v = it_bbx->first.z;
+        if(x_v < min_x) { min_x = x_v; } else if (x_v > max_x) { max_x = x_v; }
+        if(y_v < min_y) { min_y = y_v; } else if (y_v > max_y) { max_y = y_v; }
+        if(z_v < min_z) { min_z = z_v; } else if (z_v > max_z) { max_z = z_v; }
+      }
     }
 
     // Iterate through bounding box
@@ -402,7 +445,8 @@ int main(int argc, char **argv)
         {
           if(box_free.count( {x_i, y_i, z_i} ) == 0)
           {
-            if(box_occ.count( {x_i, y_i, z_i} ) == 0)
+            // if(!box_occ[ {x_i, y_i, z_i} ].mask)
+            if(box_occ.find( {x_i, y_i, z_i} ) == box_occ.end())
             {
               // Store unknown voxel indecies
               ++box_unknown[ {x_i, y_i, z_i} ];
@@ -413,88 +457,26 @@ int main(int argc, char **argv)
       }
     }
 
-
-
     timestamp(start,
               std::to_string(path_ind));
 
-  }
-
-      ++occ_initial_entries[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
-
-      // ++box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
-      //
-      // box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] = (float)(box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] / (float)(path_ind+1));
-      //
-      // mean_probability = mean_probability + box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
-
-      // std::cout << box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] << '\n';
-    }
-
-    mean_probability = mean_probability / occ_per_pose.size();
-
-    // Reset temporary occupancy map
-    occ_per_pose.clear();
-
-    // Cull occupied space according to occupancy probability
-    // Provide buffer to give time for probability to become reliable;
-    if(path_ind > 150)
-    {
-
-      std::unordered_map <ind, float> ::iterator it_cull;
-      for(it_cull = box_occ_prob.begin(); it_cull != box_occ_prob.end(); ++it_cull)
-      {
-        if(box_occ_prob[ {it_cull->first.x, it_cull->first.y, it_cull->first.z} ] < (1.0f *   mean_probability))
-        {
-          // std::cout << "erased" << '\n';
-          box_occ.erase( {it_cull->first.x, it_cull->first.y, it_cull->first.z} );
-        }
-      }
-
-      // Update unkown voxels
-      box_unknown.clear();
-
-      std::unordered_map <ind, int> ::iterator it_bbx;
-      int min_x = box_occ.begin()->first.x;
-      int min_y = box_occ.begin()->first.y;
-      int min_z = box_occ.begin()->first.z;
-      int max_x = box_occ.begin()->first.x;
-      int max_y = box_occ.begin()->first.y;
-      int max_z = box_occ.begin()->first.z;
-      for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
-      {
-        if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
-        if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
-        if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
-        if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
-        if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
-        if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
-      }
-
-      // Iterate through bounding box
-      for(int x_i = min_x; x_i < max_x; ++x_i)
-      {
-        for(int y_i = min_y; y_i < max_y; ++y_i)
-        {
-          for(int z_i = min_z; z_i < max_z; ++z_i)
-          {
-            if(box_free.count( {x_i, y_i, z_i} ) == 0)
-            {
-              if(box_occ.count( {x_i, y_i, z_i} ) == 0)
-              {
-                // Store unknown voxel indecies
-                ++box_unknown[ {x_i, y_i, z_i} ];
-                // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
-              }
-            }
-          }
-        }
-      }
-
-    }
-
-    timestamp(start,
-              std::to_string(path_ind));
+    // // Fix floor & ceil
+    // if(path_ind == path_len-1)
+    // {
+    //   std::unordered_map <ind, int> ::iterator it_edges;
+    //   for(it_edges = box_unknown.begin(); it_edges != box_unknown.end(); ++it_edges)
+    //   {
+    //     ind cpt = {it_edges->first.x, it_edges->first.y, it_edges->first.z};
+    //     if(it_edges->first.z == max_z)
+    //     {
+    //       box_occ[cpt].mask = true;
+    //     }
+    //     else if(it_edges->first.z == min_z)
+    //     {
+    //       box_occ[cpt].mask = true;
+    //     }
+    //   }
+    // }
 
   }
 
@@ -506,6 +488,8 @@ int main(int argc, char **argv)
   //   std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
   // }
 
+
+
   std::cout << "free voxels: " << box_free.size() << '\n';
   std::cout << "occupied voxels: " << box_occ.size() << '\n';
   std::cout << "unknown voxels: " << box_unknown.size() << '\n';
@@ -514,23 +498,20 @@ int main(int argc, char **argv)
   std::vector<pt> cents_free;
   std::vector<pt> cents_unknown;
 
-  get_vox_cents(box_occ,
-                cents_occ,
-                resolution
-                );
+  get_masked_cents(box_occ,
+                   cents_occ,
+                   resolution
+                   );
 
   get_vox_cents(box_free,
                 cents_free,
                 resolution
                 );
 
-  if(path_len > 150)
-  {
-    get_vox_cents(box_unknown,
-                  cents_unknown,
-                  resolution
-                  );
-  }
+  get_vox_cents(box_unknown,
+                cents_unknown,
+                resolution
+                );
 
   // for(int i = 0; i < cents_occ.size(); ++i)
   // {
@@ -545,12 +526,9 @@ int main(int argc, char **argv)
               "free"
               );
 
-  if(path_len > 150)
-  {
-    write_cents(cents_unknown,
-                "unknown"
-                );
-  }
+  write_cents(cents_unknown,
+              "unknown"
+              );
 
   timestamp(start,
             "end"

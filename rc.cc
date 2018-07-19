@@ -375,21 +375,22 @@ int main(int argc, char **argv)
     // Update unkown voxels
     box_unknown.clear();
 
-    std::unordered_map <ind, int> ::iterator it_bbx;
+    std::unordered_map <ind, occ_data> ::iterator it_bbx;
     int min_x = box_occ.begin()->first.x;
-    int min_y = box_occ.begin()->first.y;
-    int min_z = box_occ.begin()->first.z;
     int max_x = box_occ.begin()->first.x;
+    int min_y = box_occ.begin()->first.y;
     int max_y = box_occ.begin()->first.y;
+    int min_z = box_occ.begin()->first.z;
     int max_z = box_occ.begin()->first.z;
     for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
     {
-      if(it_bbx->first.x < min_x) { min_x = it_bbx->first.x; }
-      if(it_bbx->first.x > max_x) { max_x = it_bbx->first.x; }
-      if(it_bbx->first.y < min_y) { min_y = it_bbx->first.y; }
-      if(it_bbx->first.y > max_y) { max_y = it_bbx->first.y; }
-      if(it_bbx->first.z < min_z) { min_z = it_bbx->first.z; }
-      if(it_bbx->first.z > max_z) { max_z = it_bbx->first.z; }
+      int x_v = it_bbx->first.x;
+      int y_v = it_bbx->first.y;
+      int z_v = it_bbx->first.z;
+      (x_v < min_x) ? min_x = x_v : ((x_v > max_x) ? max_x = x_v : ;);
+      (y_v < min_y) ? min_y = y_v : ((y_v > max_y) ? max_y = y_v : ;);
+      (z_v < min_z) ? min_z = z_v : ((z_v > max_z) ? max_z = z_v : ;);
+
     }
 
     // Iterate through bounding box

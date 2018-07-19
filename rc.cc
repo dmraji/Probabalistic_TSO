@@ -183,25 +183,24 @@ void get_vox_cents(std::unordered_map <ind, int> & vox,
 
 }
 
-template <typename T>
-  void get_masked_cents(std::unordered_map <ind, T> & vox,
-                        std::vector<pt> & cents,
-                        float resolution
-                        )
-  {
-    // Reserve for centers
-    cents.reserve(vox.size());
+void get_masked_cents(std::unordered_map <ind, occ_data> & vox,
+                      std::vector<pt> & cents,
+                      float resolution
+                      )
+{
+  // Reserve for centers
+  cents.reserve(vox.size());
 
-    // Construct map iterator; loop through map
-    typename std::unordered_map <ind, T> ::iterator vox_iterator;
-    for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+  // Construct map iterator; loop through map
+  std::unordered_map <ind, occ_data> ::iterator vox_iterator;
+  for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+  {
+    if(vox_iterator->second.mask)
     {
-      if(vox_iterator->second.mask)
-      {
-        cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
-      }
+      cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
     }
   }
+}
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -335,9 +334,6 @@ int main(int argc, char **argv)
       int z_ind = f_floor(end.z * (1/resolution));
       ++occ_per_pose[ {x_ind, y_ind, z_ind} ];
 
-      // Update occupancy probability
-      // box_occ_prob[ {x_ind, y_ind, z_ind} ] = f_logf(box_occ[ {x_ind, y_ind, z_ind} ] / (path_ind + 1));
-
     }
 
     // Update permanent occupancy map
@@ -354,29 +350,7 @@ int main(int argc, char **argv)
       ++box_occ[cpt].hits;
       box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
 
-      // ++box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
-      //
-      // box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] = (float)(box_occ[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] / (float)(path_ind+1));
-      //
-      // mean_probability = mean_probability + box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ];
-
-      // std::cout << box_occ_prob[ {it_pp->first.x, it_pp->first.y, it_pp->first.z} ] << '\n';
     }
-
-    // Transfer candidates when "old" enough
-    // std::unordered_map <ind, occ_data> ::iterator it_check;
-    // int aged_ct = 0;
-    // for(it_check = box_occ.begin(); it_check != box_occ.end(); ++it_check)
-    // {
-    //   ind cpt = {it_check->first.x, it_check->first.y, it_check->first.z};
-    //   int lifetime = path_ind - box_occ[cpt].discovery;
-    //   if(lifetime > 100)
-    //   {
-    //     box_occ[cpt].probability = box_occ[cpt].hits / lifetime;
-    //     mean_probability = mean_probability + box_occ[cpt].probability;
-    //     ++aged_ct;
-    //   }
-    // }
 
     float mean_probability = 0.0f;
     std::unordered_map <ind, occ_data> ::iterator it_prob;
@@ -393,22 +367,16 @@ int main(int argc, char **argv)
 
     // Cull occupied space according to occupancy probability
     std::unordered_map <ind, occ_data> ::iterator it_cull;
-    // std::vector<ind> cull_list;
-
-    float threshold = 5.0f;
+    float threshold = 1.5f;
     for(it_cull = box_occ.begin(); it_cull != box_occ.end(); ++it_cull)
     {
       ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
-      // std::cout << box_occ[cpt].hits << '\n';
-      // int lifetime = path_ind - box_occ[cpt].discovery;
-      if((box_occ[cpt].probability > (threshold * mean_probability)))// && (lifetime > 100))
+      if((box_occ[cpt].probability > (threshold * mean_probability)))
       {
-        // cull_list.push_back(cpt);
         box_occ[cpt].mask = true;
       }
       if((box_occ[cpt].probability < (threshold * mean_probability)))
       {
-        // cull_list.push_back(cpt);
         box_occ[cpt].mask = false;
       }
     }
@@ -417,18 +385,20 @@ int main(int argc, char **argv)
     box_unknown.clear();
 
     std::unordered_map <ind, occ_data> ::iterator it_bbx;
+
     int min_x = box_occ.begin()->first.x;
     int max_x = box_occ.begin()->first.x;
     int min_y = box_occ.begin()->first.y;
     int max_y = box_occ.begin()->first.y;
     int min_z = box_occ.begin()->first.z;
     int max_z = box_occ.begin()->first.z;
+
     for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
     {
       if(box_occ[ {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z} ].mask)
       {
         ind cpt = {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z};
-        if(box_occ[cpt].probability > (8.0f * mean_probability))
+        if(box_occ[cpt].probability > (3.0f * mean_probability))
         {
           int x_v = cpt.x;
           int y_v = cpt.y;
@@ -440,6 +410,8 @@ int main(int argc, char **argv)
       }
     }
 
+    std::cout << "occupied voxels before: " << box_occ.size() << '\n';
+
     // Iterate through bounding box
     for(int x_i = min_x; x_i < max_x; ++x_i)
     {
@@ -449,8 +421,8 @@ int main(int argc, char **argv)
         {
           if(box_free.count( {x_i, y_i, z_i} ) == 0)
           {
-            if(!box_occ[ {x_i, y_i, z_i} ].mask)
-            // if(box_occ.find( {x_i, y_i, z_i} ) == box_occ.end())
+            // if(!box_occ[ {x_i, y_i, z_i} ].mask)
+            if(box_occ.count( {x_i, y_i, z_i} ) == 0)
             {
               // Store unknown voxel indecies
               ++box_unknown[ {x_i, y_i, z_i} ];
@@ -460,6 +432,8 @@ int main(int argc, char **argv)
         }
       }
     }
+
+    std::cout << "occupied voxels after: " << box_occ.size() << '\n';
 
     timestamp(start,
               std::to_string(path_ind));
@@ -483,13 +457,6 @@ int main(int argc, char **argv)
     // }
 
   }
-
-  // std::unordered_map <ind, int> ::iterator it_unk_cull;
-  // for(it_unk_cull == box_unknown.begin(); it_unk_cull != box_unknown.end(); ++it_unk_cull)
-  // {
-  //   ind cpt = {it_unk_cull->first.x, it_unk_cull->first.y, it_unk_cull->first.z};
-  //   if()
-  // }
 
   // std::unordered_map <ind, float> :: iterator it_fl;
   // cout << "Unordered multimap contains: " << endl;

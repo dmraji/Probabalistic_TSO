@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include <vector>
+#include <array>
 #include <algorithm>
 
 #include <unordered_map>
@@ -17,16 +18,98 @@
 
 // Boost Libraries
 #include <boost/functional/hash.hpp>
+#include <boost/bind.hpp>
+#include <boost/foreach.hpp>
+#define foreach BOOST_FOREACH
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/member.hpp>
+// #include <boost/multi_index_container.hpp>
+// #include <boost/multi_index/sequenced_index.hpp>
+// #include <boost/multi_index/ordered_index.hpp>
+// #include <boost/multi_index/hashed_index.hpp>
+// #include <boost/multi_index/composite_key.hpp>
+// #include <boost/multi_index/identity.hpp>
+// #include <boost/multi_index/member.hpp>
+
+// ROS
+#include "ros/ros.h"
+#include "rosbag/bag.h"
+#include "rosbag/view.h"
+#include "rosbag/message_instance.h"
+#include "ros/message_event.h"
+#include "rosbag/stream.h"
+
+// TF2 ROS message handling
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/message_filter.h"
+#include "message_filters/subscriber.h"
+#include "geometry_msgs/PointStamped.h"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
+// PCL
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
 
 using namespace std;
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+template <class T, size_t ROW, size_t COL>
+using matrix = std::array<std::array<T, COL>, ROW>;
+
+void pcl_callback(const PointCloud::ConstPtr& msg,
+                  std::vector<pt> & pos;
+                  )
+{
+  printf("Cloud: width = %d, height = %d\n", msg->width, msg->height);
+  pos.reserve(msg->width);
+  BOOST_FOREACH(const pcl::PointXYZ& PiC, msg->points)
+  {
+    printf("\t(%f, %f, %f)\n", PiC.x, PiC.y, PiC.z);
+    pos.push_back( {PiC.x, PiC.y, PiC.z} );
+  }
+}
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+class pose_fetch
+{
+  public:
+    pose_fetch(ros::NodeHandle nh) : tf2_(buffer_),
+                                     target_frame_(""),
+                                     tf2_filter_(point_sub_, buffer_, target_frame_, 10, 0)
+    {
+      point_sub_.subscribe(n_, "_point_stamped", 10);
+      tf2_filter_.registerCallback(boost::bind(&pose_fetch::pose_callback, this, _1));
+    }
+
+    void pose_callback(const geometry_msgs::PointStampedConstPtr& point_ptr)
+    {
+      geometry_msgs::PointStamped point_out;
+      try
+      {
+        buffer_.transform(*point_ptr, point_out, target_frame_);
+
+        ROS_INFO("pose(x:%f y:%f z:%f)\n",
+                 point_out.point.x,
+                 point_out.point.y,
+                 point_out.point.z
+                 );
+      }
+      catch(tf2::TransformException &ex)
+      {
+        ROS_WARN("Failure %s\n", ex.what());
+      }
+    }
+
+  private:
+    std::string target_frame_;
+    tf2_ros::Buffer buffer_;
+    tf2_ros::TransformListener tf2_;
+    message_filters::Subscriber<geometry_msgs::PointStamped> point_sub_;
+    tf2_ros::MessageFilter<geometry_msgs::PointStamped> tf2_filter_;
+
+}
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -38,32 +121,6 @@ void timestamp(double start,
   double elapsed;
   elapsed = (std::clock() - start) / (double) CLOCKS_PER_SEC;
   std::cout << "timestamp at " << checkpt << ": " << elapsed << '\n';
-}
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-bool is_zero(float a) { return a == 0; }
-
-// Read binary pos files
-void pos_bin_read(string fname_str,
-                  vector< vector<float> > & pos
-                  )
-{
-
-  float f;
-  ifstream fin(fname_str, std::ios::in | std::ios::binary);
-  int r_ind = 0;
-  int c_ind = 0;
-  while(fin.read(reinterpret_cast<char*>(&f), sizeof(float)))
-  {
-    pos[r_ind][c_ind] = f;
-    ++c_ind;
-    if(c_ind > 2)
-    {
-      c_ind = 0;
-      ++r_ind;
-    }
-  }
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -109,7 +166,6 @@ namespace std
 struct occ_data
 {
   int hits;
-  // int discovery;
   float probability;
   bool mask;
 };
@@ -253,24 +309,18 @@ int main(int argc, char **argv)
   std::clock_t start;
   start = std::clock();
 
-  int path_len = 525;
-  std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0.0f));
+  // Init ROS node and instantiate handle
+  ros::init(argc, argv, "rc");
+  ros::NodeHandle nh;
 
-  int ptcld_len = 14563019;
-  std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0.0f));
+  std::vector<pt> pcl_scan;
 
-  pos_bin_read("ptcld.bin",
-               ptcld);
+  ros::Subscriber sub = nh.subscribe<PointCloud>("/scan_matched_points2", 100, boost::bind(pcl_callback, _1, pcl_scan));
 
-  timestamp(start,
-            "pointcloud");
+  pose_fetch pf(nh
+                );
 
-  pos_bin_read("pos.bin",
-               path);
-
-  timestamp(start,
-           "path");
-
+  ros::spin();
 
   std::unordered_map <ind, int> box_free;
   std::unordered_map <ind, int> occ_per_pose;
@@ -286,185 +336,152 @@ int main(int argc, char **argv)
   int cloud_cut = 0;
   int cloud_chunk_len = int(floor(ptcld_len / path_len));
 
-  for(int path_ind = 0; path_ind < path_len; ++path_ind)
+  pt origin = {path[path_ind][0], path[path_ind][1], path[path_ind][2]};
+
+  // Build chunk of ptcld
+  std::vector< std::vector<float> > ptcld_chunk(cloud_chunk_len, std::vector<float>(3, 0.0f));
+
+  for(int i = 0; i < cloud_chunk_len; ++i)
+  {
+    for(int j = 0; j < 3; ++j)
+    {
+      ptcld_chunk[i][j] = ptcld[cloud_cut+i][j];
+    }
+  }
+
+  cloud_cut = cloud_cut + cloud_chunk_len;
+
+  for(int cld_ind = 0; cld_ind < cloud_chunk_len; ++cld_ind)
   {
 
-    pt origin = {path[path_ind][0], path[path_ind][1], path[path_ind][2]};
+    pt end = {ptcld_chunk[cld_ind][0], ptcld_chunk[cld_ind][1], ptcld_chunk[cld_ind][2]};
 
-    // Build chunk of ptcld
-    std::vector< std::vector<float> > ptcld_chunk(cloud_chunk_len, std::vector<float>(3, 0.0f));
+    std::vector<pt> ray;
+    cast_ray(origin,
+             end,
+             resolution,
+             ray
+             );
 
-    for(int i = 0; i < cloud_chunk_len; ++i)
+    for(int i = 0; i < ray.size(); ++i)
     {
-      for(int j = 0; j < 3; ++j)
-      {
-        ptcld_chunk[i][j] = ptcld[cloud_cut+i][j];
-      }
+      // Mark free space
+      int x_ind = f_floor(ray[i].x * (1/resolution));
+      int y_ind = f_floor(ray[i].y * (1/resolution));
+      int z_ind = f_floor(ray[i].z * (1/resolution));
+      ++box_free[ {x_ind, y_ind, z_ind} ];
     }
 
-    cloud_cut = cloud_cut + cloud_chunk_len;
+    // Ensure that destructor is called on ray vector
+    vector<pt>().swap(ray);
 
-    for(int cld_ind = 0; cld_ind < cloud_chunk_len; ++cld_ind)
+    // Mark occupied space in temporary map
+    int x_ind = f_floor(end.x * (1/resolution));
+    int y_ind = f_floor(end.y * (1/resolution));
+    int z_ind = f_floor(end.z * (1/resolution));
+    ++occ_per_pose[ {x_ind, y_ind, z_ind} ];
+
+  }
+
+  // Update permanent occupancy map
+
+  std::unordered_map <ind, int> ::iterator it_pp;
+  for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
+  {
+    ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
+    if(box_occ.count(cpt) == 0)
     {
-
-      pt end = {ptcld_chunk[cld_ind][0], ptcld_chunk[cld_ind][1], ptcld_chunk[cld_ind][2]};
-
-      std::vector<pt> ray;
-      cast_ray(origin,
-               end,
-               resolution,
-               ray
-               );
-
-      for(int i = 0; i < ray.size(); ++i)
-      {
-        // Mark free space
-        int x_ind = f_floor(ray[i].x * (1/resolution));
-        int y_ind = f_floor(ray[i].y * (1/resolution));
-        int z_ind = f_floor(ray[i].z * (1/resolution));
-        ++box_free[ {x_ind, y_ind, z_ind} ];
-      }
-
-      // Ensure that destructor is called on ray vector
-      vector<pt>().swap(ray);
-
-      // Mark occupied space in temporary map
-      int x_ind = f_floor(end.x * (1/resolution));
-      int y_ind = f_floor(end.y * (1/resolution));
-      int z_ind = f_floor(end.z * (1/resolution));
-      ++occ_per_pose[ {x_ind, y_ind, z_ind} ];
-
+      // box_occ[cpt].discovery = path_ind;
+      box_occ[cpt].mask = false;
     }
+    ++box_occ[cpt].hits;
+    box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
 
-    // Update permanent occupancy map
+  }
 
-    std::unordered_map <ind, int> ::iterator it_pp;
-    for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
+  float mean_probability = 0.0f;
+  std::unordered_map <ind, occ_data> ::iterator it_prob;
+  for(it_prob = box_occ.begin(); it_prob != box_occ.end(); ++it_prob)
+  {
+    mean_probability = mean_probability + it_prob->second.probability;
+  }
+
+  mean_probability = mean_probability / box_occ.size();
+  // std::cout << mean_probability << '\n';
+
+  // Reset temporary occupancy map
+  occ_per_pose.clear();
+
+  // Cull occupied space according to occupancy probability
+  std::unordered_map <ind, occ_data> ::iterator it_cull;
+  float threshold = 1.5f;
+  for(it_cull = box_occ.begin(); it_cull != box_occ.end(); ++it_cull)
+  {
+    ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
+    if((box_occ[cpt].probability > (threshold * mean_probability)))
     {
-      ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
-      if(box_occ.count(cpt) == 0)
-      {
-        // box_occ[cpt].discovery = path_ind;
-        box_occ[cpt].mask = false;
-      }
-      ++box_occ[cpt].hits;
-      box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
-
+      box_occ[cpt].mask = true;
     }
-
-    float mean_probability = 0.0f;
-    std::unordered_map <ind, occ_data> ::iterator it_prob;
-    for(it_prob = box_occ.begin(); it_prob != box_occ.end(); ++it_prob)
+    if((box_occ[cpt].probability < (threshold * mean_probability)))
     {
-      mean_probability = mean_probability + it_prob->second.probability;
+      box_occ[cpt].mask = false;
     }
+  }
 
-    mean_probability = mean_probability / box_occ.size();
-    // std::cout << mean_probability << '\n';
+  // Update unkown voxels
+  box_unknown.clear();
 
-    // Reset temporary occupancy map
-    occ_per_pose.clear();
+  std::unordered_map <ind, occ_data> ::iterator it_bbx;
 
-    // Cull occupied space according to occupancy probability
-    std::unordered_map <ind, occ_data> ::iterator it_cull;
-    float threshold = 1.5f;
-    for(it_cull = box_occ.begin(); it_cull != box_occ.end(); ++it_cull)
+  int min_x = box_occ.begin()->first.x;
+  int max_x = box_occ.begin()->first.x;
+  int min_y = box_occ.begin()->first.y;
+  int max_y = box_occ.begin()->first.y;
+  int min_z = box_occ.begin()->first.z;
+  int max_z = box_occ.begin()->first.z;
+
+  for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
+  {
+    if(box_occ[ {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z} ].mask)
     {
-      ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
-      if((box_occ[cpt].probability > (threshold * mean_probability)))
+      ind cpt = {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z};
+      if(box_occ[cpt].probability > (3.0f * mean_probability))
       {
-        box_occ[cpt].mask = true;
-      }
-      if((box_occ[cpt].probability < (threshold * mean_probability)))
-      {
-        box_occ[cpt].mask = false;
+        int x_v = cpt.x;
+        int y_v = cpt.y;
+        int z_v = cpt.z;
+        if(x_v < min_x) { min_x = x_v; } else if (x_v > max_x) { max_x = x_v; }
+        if(y_v < min_y) { min_y = y_v; } else if (y_v > max_y) { max_y = y_v; }
+        if(z_v < min_z) { min_z = z_v; } else if (z_v > max_z) { max_z = z_v; }
       }
     }
+  }
 
-    // Update unkown voxels
-    box_unknown.clear();
+  std::cout << "occupied voxels before: " << box_occ.size() << '\n';
 
-    std::unordered_map <ind, occ_data> ::iterator it_bbx;
-
-    int min_x = box_occ.begin()->first.x;
-    int max_x = box_occ.begin()->first.x;
-    int min_y = box_occ.begin()->first.y;
-    int max_y = box_occ.begin()->first.y;
-    int min_z = box_occ.begin()->first.z;
-    int max_z = box_occ.begin()->first.z;
-
-    for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
+  // Iterate through bounding box
+  for(int x_i = min_x; x_i < max_x; ++x_i)
+  {
+    for(int y_i = min_y; y_i < max_y; ++y_i)
     {
-      if(box_occ[ {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z} ].mask)
+      for(int z_i = min_z; z_i < max_z; ++z_i)
       {
-        ind cpt = {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z};
-        if(box_occ[cpt].probability > (3.0f * mean_probability))
+        if(box_free.count( {x_i, y_i, z_i} ) == 0)
         {
-          int x_v = cpt.x;
-          int y_v = cpt.y;
-          int z_v = cpt.z;
-          if(x_v < min_x) { min_x = x_v; } else if (x_v > max_x) { max_x = x_v; }
-          if(y_v < min_y) { min_y = y_v; } else if (y_v > max_y) { max_y = y_v; }
-          if(z_v < min_z) { min_z = z_v; } else if (z_v > max_z) { max_z = z_v; }
-        }
-      }
-    }
-
-    std::cout << "occupied voxels before: " << box_occ.size() << '\n';
-
-    // Iterate through bounding box
-    for(int x_i = min_x; x_i < max_x; ++x_i)
-    {
-      for(int y_i = min_y; y_i < max_y; ++y_i)
-      {
-        for(int z_i = min_z; z_i < max_z; ++z_i)
-        {
-          if(box_free.count( {x_i, y_i, z_i} ) == 0)
+          // if(!box_occ[ {x_i, y_i, z_i} ].mask)
+          if(box_occ.count( {x_i, y_i, z_i} ) == 0)
           {
-            // if(!box_occ[ {x_i, y_i, z_i} ].mask)
-            if(box_occ.count( {x_i, y_i, z_i} ) == 0)
-            {
-              // Store unknown voxel indecies
-              ++box_unknown[ {x_i, y_i, z_i} ];
-              // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
-            }
+            // Store unknown voxel indecies
+            ++box_unknown[ {x_i, y_i, z_i} ];
+            // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
           }
         }
       }
     }
-
-    std::cout << "occupied voxels after: " << box_occ.size() << '\n';
-
-    timestamp(start,
-              std::to_string(path_ind));
-
-    // // Fix floor & ceil
-    // if(path_ind == path_len-1)
-    // {
-    //   std::unordered_map <ind, int> ::iterator it_edges;
-    //   for(it_edges = box_unknown.begin(); it_edges != box_unknown.end(); ++it_edges)
-    //   {
-    //     ind cpt = {it_edges->first.x, it_edges->first.y, it_edges->first.z};
-    //     if(it_edges->first.z == max_z)
-    //     {
-    //       box_occ[cpt].mask = true;
-    //     }
-    //     else if(it_edges->first.z == min_z)
-    //     {
-    //       box_occ[cpt].mask = true;
-    //     }
-    //   }
-    // }
-
   }
 
-  // std::unordered_map <ind, float> :: iterator it_fl;
-  // cout << "Unordered multimap contains: " << endl;
-  // for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
-  // {
-  //
-  //   std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
-  // }
+  std::cout << "occupied voxels after: " << box_occ.size() << '\n';
+
 
   std::cout << "free voxels: " << box_free.size() << '\n';
   std::cout << "occupied voxels: " << box_occ.size() << '\n';

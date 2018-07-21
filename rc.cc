@@ -15,6 +15,8 @@
 #include <cmath>
 #include <ctime>
 
+#include <type_traits>
+
 // Boost Libraries
 #include <boost/functional/hash.hpp>
 
@@ -49,7 +51,6 @@ void pos_bin_read(string fname_str,
                   vector< vector<float> > & pos
                   )
 {
-
   float f;
   ifstream fin(fname_str, std::ios::in | std::ios::binary);
   int r_ind = 0;
@@ -105,13 +106,32 @@ namespace std
     };
 }
 
-// Occupied voxel data
-struct occ_data
+// Class for smallest size voxels permitted
+class root_vox {}
+
+class parent_vox
 {
-  int hits;
-  // int discovery;
-  float probability;
-  bool mask;
+  public:
+    int p_hits;
+    int p_side;
+}
+
+// Occupied voxel data with conditional inheritance based on whether the node is "top_level"
+template<bool root>
+class occ_data : public std::conditional<root, root_vox, parent_vox>::type
+{
+  public:
+    float probability;
+    bool mask;
+
+    occ_data() {}
+};
+
+// Free and Unk data
+template<bool root>
+class fu_data : public std::conditional<root, root_vox, parent_vox>::type
+{
+
 };
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -124,14 +144,8 @@ float sq(float n
   return m;
 }
 
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
 // Faster floor function
-int f_floor(float a
-            )
-{
-  return (int)(a + 32768.) - 32768;
-}
+int f_floor(float a) { return (int)(a + 32768.) - 32768; }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -252,34 +266,39 @@ int main(int argc, char **argv)
 {
   std::clock_t start;
   start = std::clock();
+  timestamp(start, "start");
+
+  int max_depth = 3;
+  std::vector<int> depth_levels;
+
+  for(int i = 0; i < max_depth; ++i)
+  {
+    depth_levels.push_back(std::pow(2, i));
+  }
 
   int path_len = 525;
-  std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0.0f));
+  std::vector<pt> path(path_len, {0.0f, 0.0f, 0.0f});
 
   int ptcld_len = 14563019;
-  std::vector< std::vector<float> > ptcld(ptcld_len, std::vector<float>(3, 0.0f));
+  std::vector<pt> ptcld(ptcld_len, {0.0f, 0.0f, 0.0f});
 
   pos_bin_read("ptcld.bin",
-               ptcld);
+               ptcld
+               );
 
-  timestamp(start,
-            "pointcloud");
+  timestamp(start, "pointcloud");
 
   pos_bin_read("pos.bin",
-               path);
+               path
+               );
 
-  timestamp(start,
-           "path");
+  timestamp(start, "path");
 
 
-  std::unordered_map <ind, int> box_free;
-  std::unordered_map <ind, int> occ_per_pose;
+  std::unordered_map <ind, fu_data> box_free;
+  std::unordered_map <ind, fu_data> occ_per_pose;
   std::unordered_map <ind, occ_data> box_occ;
-  std::unordered_map <ind, int> box_unknown;
-  // boost::unordered_multimap<ind, pt, boost::hash<ind>> box_free;
-
-  // pt origin = {1.053, -4.234, 0.123};
-  // pt end = {2.958, 0.342, -1.001};
+  std::unordered_map <ind, fu_data> box_unknown;
 
   float resolution = 0.1;
 
@@ -289,17 +308,14 @@ int main(int argc, char **argv)
   for(int path_ind = 0; path_ind < path_len; ++path_ind)
   {
 
-    pt origin = {path[path_ind][0], path[path_ind][1], path[path_ind][2]};
+    pt origin = path[path_ind];
 
     // Build chunk of ptcld
-    std::vector< std::vector<float> > ptcld_chunk(cloud_chunk_len, std::vector<float>(3, 0.0f));
+    std::vector<pt> ptcld_chunk(cloud_chunk_len, {0.0f, 0.0f, 0.0f});
 
     for(int i = 0; i < cloud_chunk_len; ++i)
     {
-      for(int j = 0; j < 3; ++j)
-      {
-        ptcld_chunk[i][j] = ptcld[cloud_cut+i][j];
-      }
+      ptcld_chunk[i] = ptcld[cloud_cut+i];
     }
 
     cloud_cut = cloud_cut + cloud_chunk_len;
@@ -307,7 +323,7 @@ int main(int argc, char **argv)
     for(int cld_ind = 0; cld_ind < cloud_chunk_len; ++cld_ind)
     {
 
-      pt end = {ptcld_chunk[cld_ind][0], ptcld_chunk[cld_ind][1], ptcld_chunk[cld_ind][2]};
+      pt end = ptcld_chunk[cld_ind];
 
       std::vector<pt> ray;
       cast_ray(origin,
@@ -319,39 +335,46 @@ int main(int argc, char **argv)
       for(int i = 0; i < ray.size(); ++i)
       {
         // Mark free space
-        int x_ind = f_floor(ray[i].x * (1/resolution));
-        int y_ind = f_floor(ray[i].y * (1/resolution));
-        int z_ind = f_floor(ray[i].z * (1/resolution));
-        ++box_free[ {x_ind, y_ind, z_ind} ];
+        ind cind = { f_floor(ray[i].x * (1/resolution)),
+                     f_floor(ray[i].y * (1/resolution)),
+                     f_floor(ray[i].z * (1/resolution)) };
+
+        ++box_free[cind];
       }
 
-      // Ensure that destructor is called on ray vector
-      vector<pt>().swap(ray);
-
       // Mark occupied space in temporary map
-      int x_ind = f_floor(end.x * (1/resolution));
-      int y_ind = f_floor(end.y * (1/resolution));
-      int z_ind = f_floor(end.z * (1/resolution));
-      ++occ_per_pose[ {x_ind, y_ind, z_ind} ];
+      ind cind = { f_floor(end.x * (1/resolution)),
+                   f_floor(end.y * (1/resolution)),
+                   f_floor(end.z * (1/resolution)) };
+      // if(box_occ.count(cind) != 0)
+      // {
+        cind.x = f_floor(end.x * (1/resolution));// * (1/box_occ[cind].side));
+        cind.y = f_floor(end.y * (1/resolution));// * (1/box_occ[cind].side));
+        cind.z = f_floor(end.z * (1/resolution));// * (1/box_occ[cind].side));
+      // }
+      ++occ_per_pose[cind];
 
+      // Ensure that destructor is called on ray vector
+      vector<pt>().swap(ray);Z
     }
 
     // Update permanent occupancy map
-
     std::unordered_map <ind, int> ::iterator it_pp;
     for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
     {
       ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
       if(box_occ.count(cpt) == 0)
       {
-        // box_occ[cpt].discovery = path_ind;
         box_occ[cpt].mask = false;
       }
       ++box_occ[cpt].hits;
       box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
-
     }
 
+    // Reset temporary occupancy map
+    occ_per_pose.clear();
+
+    // Update mean probability based on occupacy
     float mean_probability = 0.0f;
     std::unordered_map <ind, occ_data> ::iterator it_prob;
     for(it_prob = box_occ.begin(); it_prob != box_occ.end(); ++it_prob)
@@ -360,10 +383,6 @@ int main(int argc, char **argv)
     }
 
     mean_probability = mean_probability / box_occ.size();
-    // std::cout << mean_probability << '\n';
-
-    // Reset temporary occupancy map
-    occ_per_pose.clear();
 
     // Cull occupied space according to occupancy probability
     std::unordered_map <ind, occ_data> ::iterator it_cull;
@@ -410,14 +429,19 @@ int main(int argc, char **argv)
       }
     }
 
+    // Make sure the box has an even number of voxels
+    if(abs(max_x - min_x) % 2) == 1) { ++max_x; }
+    if(abs(max_y - min_y) % 2) == 1) { ++max_y; }
+    if(abs(max_z - min_z) % 2) == 1) { ++max_z; }
+
     std::cout << "occupied voxels before: " << box_occ.size() << '\n';
 
     // Iterate through bounding box
-    for(int x_i = min_x; x_i < max_x; ++x_i)
+    for(int x_i = min_x; x_i <= max_x; ++x_i)
     {
-      for(int y_i = min_y; y_i < max_y; ++y_i)
+      for(int y_i = min_y; y_i <= max_y; ++y_i)
       {
-        for(int z_i = min_z; z_i < max_z; ++z_i)
+        for(int z_i = min_z; z_i <= max_z; ++z_i)
         {
           if(box_free.count( {x_i, y_i, z_i} ) == 0)
           {
@@ -433,28 +457,12 @@ int main(int argc, char **argv)
       }
     }
 
+
+
     std::cout << "occupied voxels after: " << box_occ.size() << '\n';
 
     timestamp(start,
               std::to_string(path_ind));
-
-    // // Fix floor & ceil
-    // if(path_ind == path_len-1)
-    // {
-    //   std::unordered_map <ind, int> ::iterator it_edges;
-    //   for(it_edges = box_unknown.begin(); it_edges != box_unknown.end(); ++it_edges)
-    //   {
-    //     ind cpt = {it_edges->first.x, it_edges->first.y, it_edges->first.z};
-    //     if(it_edges->first.z == max_z)
-    //     {
-    //       box_occ[cpt].mask = true;
-    //     }
-    //     else if(it_edges->first.z == min_z)
-    //     {
-    //       box_occ[cpt].mask = true;
-    //     }
-    //   }
-    // }
 
   }
 

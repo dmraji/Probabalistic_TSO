@@ -28,6 +28,11 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 
+#include "ind.hh"
+#include "pt.hh"
+#include "occ_data.hh"
+#include "free_unk_data.hh"
+
 using namespace std;
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -66,73 +71,6 @@ void pos_bin_read(string fname_str,
     }
   }
 }
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// For storing pointcloud points
-struct pt
-{
-  const float x, y, z;
-};
-
-// Indexing struct for point binning, mapping
-struct ind
-{
-  const int x, y, z;
-
-  // Equality comparator overload for unordered_map
-  bool operator==(const ind& other
-                    ) const
-  {
-    return (x == other.x) && (y == other.y) && (z == other.z);
-  }
-};
-
-// Hash template for ind struct
-namespace std
-{
-  template<>
-    struct hash<ind>
-    {
-      size_t operator()(const ind& index
-                        ) const
-      {
-        size_t seed = 0;
-        boost::hash_combine(seed, index.x);
-        boost::hash_combine(seed, index.y);
-        boost::hash_combine(seed, index.z);
-        return seed;
-      }
-    };
-}
-
-// Class for smallest size voxels permitted
-class root_vox {}
-
-class parent_vox
-{
-  public:
-    int p_hits;
-    int p_side;
-}
-
-// Occupied voxel data with conditional inheritance based on whether the node is "top_level"
-template<bool root>
-class occ_data : public std::conditional<root, root_vox, parent_vox>::type
-{
-  public:
-    float probability;
-    bool mask;
-
-    occ_data() {}
-};
-
-// Free and Unk data
-template<bool root>
-class fu_data : public std::conditional<root, root_vox, parent_vox>::type
-{
-
-};
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 

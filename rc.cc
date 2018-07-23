@@ -15,18 +15,18 @@
 #include <cmath>
 #include <ctime>
 
-#include <type_traits>
+#include <typeinfo>
 
 // Boost Libraries
-#include <boost/functional/hash.hpp>
+// #include <boost/functional/hash.hpp>
 
-#include <boost/multi_index_container.hpp>
-#include <boost/multi_index/sequenced_index.hpp>
-#include <boost/multi_index/ordered_index.hpp>
-#include <boost/multi_index/hashed_index.hpp>
-#include <boost/multi_index/composite_key.hpp>
-#include <boost/multi_index/identity.hpp>
-#include <boost/multi_index/member.hpp>
+// #include <boost/multi_index_container.hpp>
+// #include <boost/multi_index/sequenced_index.hpp>
+// #include <boost/multi_index/ordered_index.hpp>
+// #include <boost/multi_index/hashed_index.hpp>
+// #include <boost/multi_index/composite_key.hpp>
+// #include <boost/multi_index/identity.hpp>
+// #include <boost/multi_index/member.hpp>
 
 #include "ind.hh"
 #include "pt.hh"
@@ -49,7 +49,7 @@ void timestamp(double start,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-bool is_zero(float a) { return a == 0; }
+inline bool is_zero(float a) { return a == 0; }
 
 // Read binary pos files
 void pos_bin_read(string fname_str,
@@ -75,7 +75,7 @@ void pos_bin_read(string fname_str,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Non-std square function
-float sq(float n
+inline float sq(float n
          )
 {
   float m = n*n;
@@ -83,7 +83,7 @@ float sq(float n
 }
 
 // Faster floor function
-int f_floor(float a) { return (int)(a + 32768.) - 32768; }
+inline int f_floor(float a) { return (int)(a + 32768.) - 32768; }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -118,41 +118,37 @@ void cast_ray(pt &origin,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Parse hash tables (maps) to get real-space centers of voxels
-void get_vox_cents(std::unordered_map <ind, int> & vox,
-                   std::vector<pt> & cents,
-                   float resolution
-                   )
-{
-  // Reserve for centers
-  cents.reserve(vox.size());
-
-  // Construct map iterator; loop through map
-  std::unordered_map <ind, int> ::iterator vox_iterator;
-  for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+template<class T>
+  void get_vox_cents(std::unordered_map <ind, T> & vox,
+                     std::vector<pt> & cents,
+                     float resolution
+                     )
   {
-    cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
-  }
+    // Reserve for centers
+    cents.reserve(vox.size());
+    // Construct map iterator
+    std::unordered_map <ind, occ_data> ::iterator vox_iterator;
 
-}
-
-void get_masked_cents(std::unordered_map <ind, occ_data> & vox,
-                      std::vector<pt> & cents,
-                      float resolution
-                      )
-{
-  // Reserve for centers
-  cents.reserve(vox.size());
-
-  // Construct map iterator; loop through map
-  std::unordered_map <ind, occ_data> ::iterator vox_iterator;
-  for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
-  {
-    if(vox_iterator->second.mask)
+    switch(typeid(T).name())
     {
-      cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+      case "occ_data":
+        for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+        {
+          if(vox_iterator->second.mask)
+          {
+            cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+          }
+        }
+        break;
+
+      case "free_unk_data":
+        for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+        {
+          cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+        }
+        break;
     }
   }
-}
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -206,6 +202,7 @@ int main(int argc, char **argv)
   start = std::clock();
   timestamp(start, "start");
 
+  // CONV TO ARGV
   int max_depth = 3;
   std::vector<int> depth_levels;
 
@@ -231,7 +228,6 @@ int main(int argc, char **argv)
                );
 
   timestamp(start, "path");
-
 
   std::unordered_map <ind, fu_data> box_free;
   std::unordered_map <ind, fu_data> occ_per_pose;
@@ -284,16 +280,11 @@ int main(int argc, char **argv)
       ind cind = { f_floor(end.x * (1/resolution)),
                    f_floor(end.y * (1/resolution)),
                    f_floor(end.z * (1/resolution)) };
-      // if(box_occ.count(cind) != 0)
-      // {
-        cind.x = f_floor(end.x * (1/resolution));// * (1/box_occ[cind].side));
-        cind.y = f_floor(end.y * (1/resolution));// * (1/box_occ[cind].side));
-        cind.z = f_floor(end.z * (1/resolution));// * (1/box_occ[cind].side));
-      // }
+
       ++occ_per_pose[cind];
 
       // Ensure that destructor is called on ray vector
-      vector<pt>().swap(ray);Z
+      vector<pt>().swap(ray);
     }
 
     // Update permanent occupancy map
@@ -301,10 +292,10 @@ int main(int argc, char **argv)
     for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
     {
       ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
-      if(box_occ.count(cpt) == 0)
-      {
-        box_occ[cpt].mask = false;
-      }
+      // if(box_occ.count(cpt) == 0)
+      // {
+      //   box_occ[cpt].mask = false;
+      // }
       ++box_occ[cpt].hits;
       box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
     }

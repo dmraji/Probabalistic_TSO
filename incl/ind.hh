@@ -1,20 +1,52 @@
+// Data indexing struct for real-space point voxelization
+
 #ifndef ind_hh
 #define ind_hh
 
-// Indexing struct for point binning, mapping
+#include "multi_dim_array_hh"
+
+// Boost Libraries
+#include <boost/functional/hash.hpp>
+
 struct ind
 {
   const int x, y, z;
 
-  // Equality comparator overload for unordered_map
+  ind() : x(0),
+          y(0),
+          z(0)
+          {}
+
+  // Equality comparator overload
   bool operator==(const ind& other
                   ) const
   {
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
+
+  // Fills a 2x2x2 array with child indecies of parent voxel
+  void get_child_inds(const ind& parent,
+                      md_array<ind, 2, 2, 2> & children,
+                      int rel_extent
+                      ) const
+  {
+    for(int x_i = 0; x_i < 2; ++x_i)
+    {
+      for(int y_i = 0; y_i < 2; ++y_i)
+      {
+        for(int z_i = 0; z_i < 2; ++z_i)
+        {
+          children[x_i][y_i][z_i] = {parent.x + (x_i / rel_extent),
+                                     parent.y + (y_i / rel_extent),
+                                     parent.z + (z_i / rel_extent)};
+        }
+      }
+    }
+  }
+  
 };
 
-// Hash template for ind struct
+// Hash template for indexing
 namespace std
 {
   template<>

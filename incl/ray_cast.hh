@@ -11,6 +11,8 @@
 
 #include "pt.hh"
 
+#include "il_math.hh"
+
 void cast_ray(pt &origin,
               pt &end,
               float resolution,

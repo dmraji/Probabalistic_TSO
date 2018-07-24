@@ -1,7 +1,5 @@
 // Ray-casting non-member (source)
 
-#include "il_math.hh"
-
 #include "ray_cast.hh"
 
 void cast_ray(pt &origin,

@@ -33,6 +33,8 @@
 #include "il_math.hh"
 #include "vox_to_cents.hh"
 #include "ray_cast.hh"
+#include "occ_update.hh"
+#include "bbx.hh"
 
 using namespace std;
 
@@ -143,6 +145,7 @@ int main(int argc, char **argv)
   // Hash tables for occupied voxels
   std::unordered_map <ind, free_unk_data> occ_per_pose;
   std::unordered_map <ind, occ_data> box_occ;
+
   // Hash tables for free and unknown voxels
   std::unordered_map <ind, free_unk_data> box_free;
   std::unordered_map <ind, free_unk_data> box_unknown;
@@ -202,161 +205,23 @@ int main(int argc, char **argv)
       vector<pt>().swap(ray);
     }
 
-    // Update permanent occupancy map
-    std::unordered_map <ind, free_unk_data> ::iterator it_pp;
-    for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
-    {
-      ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
-      // if(box_occ.count(cpt) == 0)
-      // {
-      //   box_occ[cpt].mask = false;
-      // }
-      ++box_occ[cpt].hits;
-      box_occ[cpt].probability = (float)box_occ[cpt].hits / (float)(path_ind+1);
-    }
-
-    // Reset temporary occupancy map
-    occ_per_pose.clear();
-
-    // Update mean probability based on occupacy
-    float mean_probability = 0.0f;
-    std::unordered_map <ind, occ_data> ::iterator it_prob;
-    for(it_prob = box_occ.begin(); it_prob != box_occ.end(); ++it_prob)
-    {
-      mean_probability = mean_probability + it_prob->second.probability;
-    }
-
-    mean_probability = mean_probability / box_occ.size();
-
-    // Cull occupied space according to occupancy probability
-    std::unordered_map <ind, occ_data> ::iterator it_cull;
-    float threshold = 1.5f;
-    for(it_cull = box_occ.begin(); it_cull != box_occ.end(); ++it_cull)
-    {
-      ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
-      if((box_occ[cpt].probability > (threshold * mean_probability)))
-      {
-        box_occ[cpt].mask = true;
-      }
-      if((box_occ[cpt].probability < (threshold * mean_probability)))
-      {
-        box_occ[cpt].mask = false;
-      }
-    }
-
-    // Update unkown voxels
-    box_unknown.clear();
-
-    std::unordered_map <ind, occ_data> ::iterator it_bbx;
-
-    int min_x = box_occ.begin()->first.x;
-    int max_x = box_occ.begin()->first.x;
-    int min_y = box_occ.begin()->first.y;
-    int max_y = box_occ.begin()->first.y;
-    int min_z = box_occ.begin()->first.z;
-    int max_z = box_occ.begin()->first.z;
-
-    for(it_bbx = box_occ.begin(); it_bbx != box_occ.end(); ++it_bbx)
-    {
-      if(box_occ[ {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z} ].mask)
-      {
-        ind cpt = {it_bbx->first.x, it_bbx->first.y, it_bbx->first.z};
-        if(box_occ[cpt].probability > (3.0f * mean_probability))
-        {
-          int x_v = cpt.x;
-          int y_v = cpt.y;
-          int z_v = cpt.z;
-          if(x_v < min_x) { min_x = x_v; } else if (x_v > max_x) { max_x = x_v; }
-          if(y_v < min_y) { min_y = y_v; } else if (y_v > max_y) { max_y = y_v; }
-          if(z_v < min_z) { min_z = z_v; } else if (z_v > max_z) { max_z = z_v; }
-        }
-      }
-    }
-
-    // Make sure the box has an even number of voxels
-    if((abs(max_x - min_x) % 2) == 1) { ++max_x; }
-    if((abs(max_y - min_y) % 2) == 1) { ++max_y; }
-    if((abs(max_z - min_z) % 2) == 1) { ++max_z; }
-
-    std::cout << "occupied voxels before: " << box_occ.size() << '\n';
-
-    // Iterate through bounding box
-    for(int x_i = min_x; x_i <= max_x; ++x_i)
-    {
-      for(int y_i = min_y; y_i <= max_y; ++y_i)
-      {
-        for(int z_i = min_z; z_i <= max_z; ++z_i)
-        {
-          if(box_free.count( {x_i, y_i, z_i} ) == 0)
-          {
-            // if(!box_occ[ {x_i, y_i, z_i} ].mask)
-            if(box_occ.count( {x_i, y_i, z_i} ) == 0)
-            {
-              // Store unknown voxel indecies
-              ++box_unknown[ {x_i, y_i, z_i} ].hits;
-              // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
-            }
-          }
-        }
-      }
-    }
-
-
-
-    std::cout << "occupied voxels after: " << box_occ.size() << '\n';
+    vox_update(occ_per_pose,
+               box_occ,
+               box_free,
+               box_unknown,
+               path_ind
+               );
 
     timestamp(start,
               std::to_string(path_ind));
 
   }
 
-  // std::unordered_map <ind, float> :: iterator it_fl;
-  // cout << "Unordered multimap contains: " << endl;
-  // for(it_fl = box_occ_prob.begin(); it_fl != box_occ_prob.end(); ++it_fl)
-  // {
-  //
-  //   std::cout << "(" << it_fl->first.x << ", " << it_fl->first.y << ", " << it_fl->first.z << " : " << it_fl->second << ")" << endl;
-  // }
-
-  std::cout << "free voxels: " << box_free.size() << '\n';
-  std::cout << "occupied voxels: " << box_occ.size() << '\n';
-  std::cout << "unknown voxels: " << box_unknown.size() << '\n';
-
-  std::vector<pt> cents_occ;
-  std::vector<pt> cents_free;
-  std::vector<pt> cents_unknown;
-
-  get_vox_cents(box_occ,
-                cents_occ,
-                resolution
-                );
-
-  get_vox_cents(box_free,
-                cents_free,
-                resolution
-                );
-
-  get_vox_cents(box_unknown,
-                cents_unknown,
-                resolution
-                );
-
-  // for(int i = 0; i < cents_occ.size(); ++i)
-  // {
-  //    std::cout << "(" << cents_occ[i].x << ", " << cents_occ[i].y << ", " << cents_occ[i].z << ")" << '\n';
-  // }
-
-  write_cents(cents_occ,
-              "occupied"
-              );
-
-  write_cents(cents_free,
-              "free"
-              );
-
-  write_cents(cents_unknown,
-              "unknown"
-              );
+  out_cents writer(box_occ,
+                   box_free,
+                   box_unknown,
+                   resolution
+                   );
 
   timestamp(start,
             "end"

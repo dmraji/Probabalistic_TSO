@@ -17,3 +17,8 @@ project(rc)
 # create the executable
 #add_executable(${name} ${name}.cc ${sources} ${headers})
 add_executable(${name} ${name}.cc)
+
+# get the external libraries
+link_directories(/usr/lib/x86_64-linux-gnu/hdf5/serial)
+include_directories(/usr/include/hdf5/serial)
+target_link_libraries(${name} hdf5 hdf5_cpp)

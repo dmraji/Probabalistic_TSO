@@ -27,6 +27,9 @@
 #include <boost/multi_index/identity.hpp>
 #include <boost/multi_index/member.hpp>
 
+// Add following line to .bashrc to ensure H5 libs are found: export CPATH=/usr/include/hdf5/serial/
+#include "H5Cpp.h"
+
 using namespace std;
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -40,6 +43,27 @@ void timestamp(double start,
   elapsed = (std::clock() - start) / (double) CLOCKS_PER_SEC;
   std::cout << "timestamp at " << checkpt << ": " << elapsed << '\n';
 }
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// For storing pointcloud points
+struct pt
+{
+  const float x, y, z;
+};
+
+// Indexing struct for point binning, mapping
+struct ind
+{
+  const int x, y, z;
+
+  // Equality comparator overload for unordered_map
+  bool operator==(const ind& other
+                    ) const
+  {
+    return (x == other.x) && (y == other.y) && (z == other.z);
+  }
+};
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -64,27 +88,6 @@ void pos_bin_read(string fname_str,
     }
   }
 }
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// For storing pointcloud points
-struct pt
-{
-  const float x, y, z;
-};
-
-// Indexing struct for point binning, mapping
-struct ind
-{
-  const int x, y, z;
-
-  // Equality comparator overload for unordered_map
-  bool operator==(const ind& other
-                    ) const
-  {
-    return (x == other.x) && (y == other.y) && (z == other.z);
-  }
-};
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
@@ -253,6 +256,8 @@ int main(int argc, char **argv)
 
   std::clock_t start;
   start = std::clock();
+
+  h5_read("RunData.h5", "/cld");
 
   int path_len = 525;
   std::vector< std::vector<float> > path(path_len, std::vector<float>(3, 0.));

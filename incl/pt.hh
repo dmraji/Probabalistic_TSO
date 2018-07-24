@@ -6,11 +6,6 @@
 struct pt
 {
   const float x, y, z;
-
-  pt() : x(0.0f),
-         y(0.0f),
-         z(0.0f) 
-         {}
 };
 
 #endif

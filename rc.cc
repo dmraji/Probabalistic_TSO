@@ -1,9 +1,7 @@
 #include <iostream>
 #include <fstream>
-#include <sstream>
 
 #include <string>
-#include <cstring>
 
 #include <vector>
 #include <algorithm>
@@ -15,11 +13,8 @@
 #include <cmath>
 #include <ctime>
 
-#include <typeinfo>
-
 // Boost Libraries
-// #include <boost/functional/hash.hpp>
-
+#include <boost/functional/hash.hpp>
 // #include <boost/multi_index_container.hpp>
 // #include <boost/multi_index/sequenced_index.hpp>
 // #include <boost/multi_index/ordered_index.hpp>
@@ -28,10 +23,16 @@
 // #include <boost/multi_index/identity.hpp>
 // #include <boost/multi_index/member.hpp>
 
+// Data structure headers
 #include "ind.hh"
 #include "pt.hh"
 #include "occ_data.hh"
 #include "free_unk_data.hh"
+
+// Non-member function headers
+#include "il_math.hh"
+#include "vox_to_cents.hh"
+#include "ray_cast.hh"
 
 using namespace std;
 
@@ -39,7 +40,7 @@ using namespace std;
 
 // Simple timestamp function
 void timestamp(double start,
-               string checkpt
+               std::string checkpt
                )
 {
   double elapsed;
@@ -49,121 +50,28 @@ void timestamp(double start,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
-inline bool is_zero(float a) { return a == 0; }
-
 // Read binary pos files
-void pos_bin_read(string fname_str,
-                  vector< vector<float> > & pos
+void pos_bin_read(std::string fname_str,
+                  std::vector<pt> & pos
                   )
 {
   float f;
   ifstream fin(fname_str, std::ios::in | std::ios::binary);
-  int r_ind = 0;
   int c_ind = 0;
+  std::vector<float> temp;
   while(fin.read(reinterpret_cast<char*>(&f), sizeof(float)))
   {
-    pos[r_ind][c_ind] = f;
+    temp.push_back(f);
     ++c_ind;
     if(c_ind > 2)
     {
+      pos.push_back( {temp[0],
+                      temp[1],
+                      temp[2]} );
+      temp.clear();
       c_ind = 0;
-      ++r_ind;
     }
   }
-}
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Non-std square function
-inline float sq(float n
-         )
-{
-  float m = n*n;
-  return m;
-}
-
-// Faster floor function
-inline int f_floor(float a) { return (int)(a + 32768.) - 32768; }
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Raycasting function; uses discretization to acquire points along ray path
-void cast_ray(pt &origin,
-              pt &end,
-              float resolution,
-              vector<pt> & ray
-              )
-{
-  pt dist = {end.x-origin.x, end.y-origin.y, end.z-origin.z};
-  float mag = std::sqrt(sq(dist.x) + sq(dist.y) + sq(dist.z));
-
-  // Floor instead of ceil to dampen chance of mistaken marking of endpt as free
-  int disc = int(std::ceil(mag/resolution));
-  pt inc = {dist.x / disc, dist.y / disc, dist.z / disc};
-
-  // Warn on short ray
-  if(disc < 1)
-  {
-    std::cout << "WARNING: Ray of length less than 1!" << endl;
-  }
-  // Do not mark endpt as free
-  ray.reserve(disc-1);
-  for(int i = 0; i < disc-1; ++i)
-  {
-    ray.push_back({origin.x + inc.x * i, origin.y + inc.y * i, origin.z + inc.z * i});
-  }
-
-}
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Parse hash tables (maps) to get real-space centers of voxels
-template<class T>
-  void get_vox_cents(std::unordered_map <ind, T> & vox,
-                     std::vector<pt> & cents,
-                     float resolution
-                     )
-  {
-    // Reserve for centers
-    cents.reserve(vox.size());
-    // Construct map iterator
-    std::unordered_map <ind, occ_data> ::iterator vox_iterator;
-
-    switch(typeid(T).name())
-    {
-      case "occ_data":
-        for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
-        {
-          if(vox_iterator->second.mask)
-          {
-            cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
-          }
-        }
-        break;
-
-      case "free_unk_data":
-        for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
-        {
-          cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
-        }
-        break;
-    }
-  }
-
-//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
-
-// Write voxel centers to file
-void write_cents(std::vector<pt> & cents,
-                 std::string filename
-                 )
-{
-  std::ofstream file;
-  file.open(filename+".txt");
-  for(int i = 0; i < cents.size(); ++i)
-  {
-    file << cents[i].x << ", " << cents[i].y << ", " << cents[i].z << "\n";
-  }
-  file.close();
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
@@ -198,6 +106,7 @@ void write_cents(std::vector<pt> & cents,
 
 int main(int argc, char **argv)
 {
+  // Start clock
   std::clock_t start;
   start = std::clock();
   timestamp(start, "start");
@@ -212,10 +121,12 @@ int main(int argc, char **argv)
   }
 
   int path_len = 525;
-  std::vector<pt> path(path_len, {0.0f, 0.0f, 0.0f});
+  std::vector<pt> path;
+  path.reserve(path_len);
 
   int ptcld_len = 14563019;
-  std::vector<pt> ptcld(ptcld_len, {0.0f, 0.0f, 0.0f});
+  std::vector<pt> ptcld;
+  ptcld.reserve(ptcld_len);
 
   pos_bin_read("ptcld.bin",
                ptcld
@@ -229,11 +140,14 @@ int main(int argc, char **argv)
 
   timestamp(start, "path");
 
-  std::unordered_map <ind, fu_data> box_free;
-  std::unordered_map <ind, fu_data> occ_per_pose;
+  // Hash tables for occupied voxels
+  std::unordered_map <ind, free_unk_data> occ_per_pose;
   std::unordered_map <ind, occ_data> box_occ;
-  std::unordered_map <ind, fu_data> box_unknown;
+  // Hash tables for free and unknown voxels
+  std::unordered_map <ind, free_unk_data> box_free;
+  std::unordered_map <ind, free_unk_data> box_unknown;
 
+  // Default resolution 10 cm
   float resolution = 0.1;
 
   int cloud_cut = 0;
@@ -245,11 +159,12 @@ int main(int argc, char **argv)
     pt origin = path[path_ind];
 
     // Build chunk of ptcld
-    std::vector<pt> ptcld_chunk(cloud_chunk_len, {0.0f, 0.0f, 0.0f});
+    std::vector<pt> ptcld_chunk;
+    ptcld_chunk.reserve(cloud_chunk_len);
 
     for(int i = 0; i < cloud_chunk_len; ++i)
     {
-      ptcld_chunk[i] = ptcld[cloud_cut+i];
+      ptcld_chunk.push_back(ptcld[cloud_cut+i]);
     }
 
     cloud_cut = cloud_cut + cloud_chunk_len;
@@ -273,7 +188,7 @@ int main(int argc, char **argv)
                      f_floor(ray[i].y * (1/resolution)),
                      f_floor(ray[i].z * (1/resolution)) };
 
-        ++box_free[cind];
+        ++box_free[cind].hits;
       }
 
       // Mark occupied space in temporary map
@@ -281,14 +196,14 @@ int main(int argc, char **argv)
                    f_floor(end.y * (1/resolution)),
                    f_floor(end.z * (1/resolution)) };
 
-      ++occ_per_pose[cind];
+      ++occ_per_pose[cind].hits;
 
       // Ensure that destructor is called on ray vector
       vector<pt>().swap(ray);
     }
 
     // Update permanent occupancy map
-    std::unordered_map <ind, int> ::iterator it_pp;
+    std::unordered_map <ind, free_unk_data> ::iterator it_pp;
     for(it_pp = occ_per_pose.begin(); it_pp != occ_per_pose.end(); ++it_pp)
     {
       ind cpt = {it_pp->first.x, it_pp->first.y, it_pp->first.z};
@@ -359,9 +274,9 @@ int main(int argc, char **argv)
     }
 
     // Make sure the box has an even number of voxels
-    if(abs(max_x - min_x) % 2) == 1) { ++max_x; }
-    if(abs(max_y - min_y) % 2) == 1) { ++max_y; }
-    if(abs(max_z - min_z) % 2) == 1) { ++max_z; }
+    if((abs(max_x - min_x) % 2) == 1) { ++max_x; }
+    if((abs(max_y - min_y) % 2) == 1) { ++max_y; }
+    if((abs(max_z - min_z) % 2) == 1) { ++max_z; }
 
     std::cout << "occupied voxels before: " << box_occ.size() << '\n';
 
@@ -378,7 +293,7 @@ int main(int argc, char **argv)
             if(box_occ.count( {x_i, y_i, z_i} ) == 0)
             {
               // Store unknown voxel indecies
-              ++box_unknown[ {x_i, y_i, z_i} ];
+              ++box_unknown[ {x_i, y_i, z_i} ].hits;
               // std::cout << "(" << x_i << ", " << y_i << ", " << z_i << ")" << '\n';
             }
           }
@@ -411,10 +326,10 @@ int main(int argc, char **argv)
   std::vector<pt> cents_free;
   std::vector<pt> cents_unknown;
 
-  get_masked_cents(box_occ,
-                   cents_occ,
-                   resolution
-                   );
+  get_vox_cents(box_occ,
+                cents_occ,
+                resolution
+                );
 
   get_vox_cents(box_free,
                 cents_free,

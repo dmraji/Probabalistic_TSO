@@ -8,9 +8,9 @@ struct free_unk_data
   int hits;
   int sr_extent;
 
-  occ_data() : hits(0),
-               sr_extent(1)
-               {}
+  free_unk_data() : hits(0),
+                    sr_extent(1)
+                    {}
 };
 
 #endif

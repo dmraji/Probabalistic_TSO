@@ -3,7 +3,7 @@
 #ifndef ind_hh
 #define ind_hh
 
-#include "multi_dim_array_hh"
+// #include "multi_dim_array.hh"
 
 // Boost Libraries
 #include <boost/functional/hash.hpp>
@@ -11,11 +11,6 @@
 struct ind
 {
   const int x, y, z;
-
-  ind() : x(0),
-          y(0),
-          z(0)
-          {}
 
   // Equality comparator overload
   bool operator==(const ind& other
@@ -26,24 +21,24 @@ struct ind
 
   // Fills a 2x2x2 array with child indecies of parent voxel
   void get_child_inds(const ind& parent,
-                      md_array<ind, 2, 2, 2> & children,
+                      std::vector<ind> & children,
                       int rel_extent
                       ) const
   {
-    for(int x_i = 0; x_i < 2; ++x_i)
+    for(int z_i = 0; z_i < 2; ++z_i)
     {
       for(int y_i = 0; y_i < 2; ++y_i)
       {
-        for(int z_i = 0; z_i < 2; ++z_i)
+        for(int x_i = 0; x_i < 2; ++x_i)
         {
-          children[x_i][y_i][z_i] = {parent.x + (x_i / rel_extent),
-                                     parent.y + (y_i / rel_extent),
-                                     parent.z + (z_i / rel_extent)};
+          children.push_back( { parent.x + (x_i / rel_extent),
+                                parent.y + (y_i / rel_extent),
+                                parent.z + (z_i / rel_extent) } );
         }
       }
     }
   }
-  
+
 };
 
 // Hash template for indexing

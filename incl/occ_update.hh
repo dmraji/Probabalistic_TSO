@@ -15,11 +15,11 @@
 void vox_update(std::unordered_map<ind, free_unk_data> & opp,
                 std::unordered_map<ind, occ_data> & occ,
                 std::unordered_map<ind, free_unk_data> & freev,
-                std::unordered_map<ind, free_unk_data> & unk
+                std::unordered_map<ind, free_unk_data> & unk,
                 int pose_ind
                 );
 
-void prob_update(std::unordered_map<ind, occ_data> & occ
+float prob_update(std::unordered_map<ind, occ_data> & occ
                  );
 
 #endif

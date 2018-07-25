@@ -9,7 +9,13 @@ struct pt
 };
 
 // To read from hdf5
-struct pt_a
+struct cldpt
+{
+  float x, y, z;
+  int scan_index;
+};
+
+struct pose
 {
   float x, y, z;
 };

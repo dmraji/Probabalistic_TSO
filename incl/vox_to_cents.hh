@@ -22,12 +22,13 @@ class out_cents
   public:
     out_cents(std::unordered_map<ind, occ_data> & occ,
               std::unordered_map<ind, free_unk_data> & freev,
-              std::unordered_map<ind, free_unk_data> & unk
+              std::unordered_map<ind, free_unk_data> & unk,
+              float resolution
               )
     {
-      std::cout << "free voxels: " << box_free.size() << '\n';
-      std::cout << "occupied voxels: " << box_occ.size() << '\n';
-      std::cout << "unknown voxels: " << box_unknown.size() << '\n';
+      std::cout << "free voxels: " << freev.size() << '\n';
+      std::cout << "occupied voxels: " << occ.size() << '\n';
+      std::cout << "unknown voxels: " << unk.size() << '\n';
 
       std::vector<pt> cents_occ;
       std::vector<pt> cents_free;

@@ -6,7 +6,7 @@
 void vox_update(std::unordered_map<ind, free_unk_data> & opp,
                 std::unordered_map<ind, occ_data> & occ,
                 std::unordered_map<ind, free_unk_data> & freev,
-                std::unordered_map<ind, free_unk_data> & unk
+                std::unordered_map<ind, free_unk_data> & unk,
                 int pose_ind
                 )
 {
@@ -34,7 +34,7 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
   bounds.even_out();
 
   // Update unkown voxels
-  box_unknown.clear();
+  unk.clear();
   for(int x_i = bounds.min_x; x_i <= bounds.max_x; ++x_i)
   {
     for(int y_i = bounds.min_y; y_i <= bounds.max_y; ++y_i)

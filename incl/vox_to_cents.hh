@@ -17,21 +17,100 @@
 #include "occ_data.hh"
 #include "free_unk_data.hh"
 
-// Overload for occupied voxels
-void get_vox_cents(std::unordered_map <ind, occ_data> & vox,
-                   std::vector<pt> & cents,
-                   float resolution
-                   );
+class out_cents
+{
+  public:
+    out_cents(std::unordered_map<ind, occ_data> & occ,
+              std::unordered_map<ind, free_unk_data> & freev,
+              std::unordered_map<ind, free_unk_data> & unk
+              )
+    {
+      std::cout << "free voxels: " << box_free.size() << '\n';
+      std::cout << "occupied voxels: " << box_occ.size() << '\n';
+      std::cout << "unknown voxels: " << box_unknown.size() << '\n';
 
-// Overload for free/unk voxels
-void get_vox_cents(std::unordered_map <ind, free_unk_data> & vox,
-                   std::vector<pt> & cents,
-                   float resolution
-                   );
+      std::vector<pt> cents_occ;
+      std::vector<pt> cents_free;
+      std::vector<pt> cents_unknown;
 
-// Write cents to file
-void write_cents(std::vector<pt> & cents,
-                 std::string filename
-                 );
+      get_vox_cents(occ,
+                    cents_occ,
+                    resolution
+                    );
+
+      get_vox_cents(freev,
+                    cents_free,
+                    resolution
+                    );
+
+      get_vox_cents(unk,
+                    cents_unknown,
+                    resolution
+                    );
+
+      write_cents(cents_occ,
+                  "occupied"
+                  );
+
+      write_cents(cents_free,
+                  "free"
+                  );
+
+      write_cents(cents_unknown,
+                  "unknown"
+                  );
+
+    }
+
+    // Overload for occupied voxels
+    void get_vox_cents(std::unordered_map <ind, occ_data> & vox,
+                       std::vector<pt> & cents,
+                       float resolution
+                       )
+    {
+      // Reserve for centers
+      cents.reserve(vox.size());
+      // Construct map iterator
+      std::unordered_map <ind, occ_data> ::iterator vox_iterator;
+      for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+      {
+        if(vox_iterator->second.mask)
+        {
+          cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+        }
+      }
+    }
+
+    // Overload for free/unk voxels
+    void get_vox_cents(std::unordered_map <ind, free_unk_data> & vox,
+                      std::vector<pt> & cents,
+                      float resolution
+                      )
+    {
+      // Reserve for centers
+      cents.reserve(vox.size());
+      // Construct map iterator
+      std::unordered_map <ind, free_unk_data> ::iterator vox_iterator;
+      for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
+      {
+        cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+      }
+    }
+
+    // Write cents to file
+    void write_cents(std::vector<pt> & cents,
+                     std::string filename
+                     )
+    {
+      std::ofstream file;
+      file.open(filename+".txt");
+      for(int i = 0; i < cents.size(); ++i)
+      {
+        file << cents[i].x << ", " << cents[i].y << ", " << cents[i].z << "\n";
+      }
+      file.close();
+    }
+
+};
 
 #endif

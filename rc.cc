@@ -54,6 +54,8 @@ void timestamp(double start,
   std::cout << "timestamp at " << checkpt << ": " << elapsed << '\n';
 }
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 int main(int argc, char **argv)
 {
   // Start clock
@@ -136,11 +138,11 @@ int main(int argc, char **argv)
     for(int scan_ind = 0; scan_ind < scan.size(); ++scan_ind)
     {
 
-      pt end = scan[scan_ind];
+      // pt end = scan[scan_ind];
 
       std::vector<pt> ray;
       cast_ray(origin,
-               end,
+               scan[scan_ind],
                resolution,
                ray
                );
@@ -148,19 +150,15 @@ int main(int argc, char **argv)
       for(int i = 0; i < ray.size(); ++i)
       {
         // Mark free space
-        ind cind = { f_floor(ray[i].x * (1/resolution)),
-                     f_floor(ray[i].y * (1/resolution)),
-                     f_floor(ray[i].z * (1/resolution)) };
-
-        ++box_free[cind].hits;
+        ++box_free[ { f_floor(ray[i].x * (1/resolution)),
+                      f_floor(ray[i].y * (1/resolution)),
+                      f_floor(ray[i].z * (1/resolution)) } ].hits;
       }
 
       // Mark occupied space in temporary map
-      ind cind = { f_floor(end.x * (1/resolution)),
-                   f_floor(end.y * (1/resolution)),
-                   f_floor(end.z * (1/resolution)) };
-
-      ++occ_per_pose[cind].hits;
+      ++occ_per_pose[ { f_floor(scan[scan_ind].x * (1/resolution)),
+                        f_floor(scan[scan_ind].y * (1/resolution)),
+                        f_floor(scan[scan_ind].z * (1/resolution)) } ].hits;
 
       // Ensure that destructor is called on ray vector
       std::vector<pt>().swap(ray);

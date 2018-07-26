@@ -7,20 +7,28 @@
 
 #include "H5Cpp.h"
 
-class h5_read
+class h5_file_opener
 {
   public:
 
-    h5_read(std::string file_name
-            )
+    h5_file_opener()
     {
       using namespace H5;
 
-      const H5std_string FILE_NAME( file_name );
+      const H5std_string FILE_NAME( "RunData.h5" );
       H5File file( FILE_NAME, H5F_ACC_RDONLY );
-
-      file.close();
     }
+};
+
+class h5_read
+{
+  private:
+    h5_file_opener open_h5;
+
+  public:
+
+    // Constructor with open file inheritance
+    h5_read(std::string file_name) : open_h5() {}
 
     int sizeup(std::string dataset_name
                )

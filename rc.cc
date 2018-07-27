@@ -64,7 +64,8 @@ int main(int argc, char **argv)
   timestamp(start, "start");
 
   // Read data from H5 files
-  h5_read reader("RunData.h5");
+  // h5_read reader("RunData.h5");
+  h5_read reader;
 
   int cld_len = reader.sizeup("/cld");
   cldpt *cloud_scans = new cldpt[cld_len];
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
                         );
 
   // CONV TO ARGV
-  int max_depth = 3;
+  int max_depth = 4;
   std::vector<int> depth_levels;
 
   for(int i = 0; i < max_depth; ++i)
@@ -92,10 +93,14 @@ int main(int argc, char **argv)
   // Hash tables for occupied voxels
   std::unordered_map <ind, free_unk_data> occ_per_pose;
   std::unordered_map <ind, occ_data> box_occ;
+  // box_occ.reserve(300000);
 
   // Hash tables for free and unknown voxels
   std::unordered_map <ind, free_unk_data> box_free;
+  // box_free.reserve(1000000);
+
   std::unordered_map <ind, free_unk_data> box_unknown;
+  // box_unknown.reserve(600000);
 
   // Default resolution 10 cm
   float resolution = 0.1;
@@ -168,7 +173,9 @@ int main(int argc, char **argv)
                box_occ,
                box_free,
                box_unknown,
-               pose_ind
+               pose_ind,
+               max_depth,
+               7.5f
                );
 
     timestamp(start,

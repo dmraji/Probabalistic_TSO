@@ -19,7 +19,7 @@ struct ind
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
 
-  // Fills a 2x2x2 array with child indecies of parent voxel
+  // Fills a vector<ind> of size=8 with child indicies of parent voxel
   void get_child_inds(const ind& parent,
                       std::vector<ind> & children,
                       int pr_extent

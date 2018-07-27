@@ -15,11 +15,14 @@
 struct corners
 {
   int min_x, min_y, min_z, max_x, max_y, max_z;
+  float mprob;
+
+  corners(float mean_probability) : mprob(mean_probability) {}
 
   // Bounding box constructor
-  corners(std::unordered_map<ind, occ_data> & occ,
-          float mean_probability
-          )
+  void get_corners(std::unordered_map<ind, occ_data> & occ,
+                   float thresh
+                   )
   {
     min_x = occ.begin()->first.x;
     max_x = occ.begin()->first.x;
@@ -34,7 +37,7 @@ struct corners
       if(occ[ {it->first.x, it->first.y, it->first.z} ].mask)
       {
         ind cpt = {it->first.x, it->first.y, it->first.z};
-        if(occ[cpt].probability > (5.0f * mean_probability))
+        if(occ[cpt].probability > (thresh * mprob))
         {
           int x_v = cpt.x;
           int y_v = cpt.y;

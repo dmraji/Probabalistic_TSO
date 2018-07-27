@@ -7,7 +7,9 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
                 std::unordered_map<ind, occ_data> & occ,
                 std::unordered_map<ind, free_unk_data> & freev,
                 std::unordered_map<ind, free_unk_data> & unk,
-                int pose_ind
+                int pose_ind,
+                int max_depth,
+                float max_thresh
                 )
 {
 
@@ -27,13 +29,38 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
                                        );
 
   // Retrieve bounding box
-  corners bounds(occ,
-                 mean_probability
-                 );
+  corners bounds(mean_probability);
+  corners prior_bounds(mean_probability);
+  prior_bounds.min_x = 0;
+  prior_bounds.max_x = 0;
+  prior_bounds.min_y = 0;
+  prior_bounds.max_y = 0;
+  prior_bounds.min_z = 0;
+  prior_bounds.max_z = 0;
 
-  bounds.even_out();
+  for(int i = 0; i < max_depth; ++i)
+  {
+    float thresh = max_thresh - (float)(2*i)
 
-  // Update unkown voxels
+    bounds.get_corners(occ,
+                       thresh
+                       );
+
+    bounds.even_out();
+
+    // parse bbx for unk with coarsest bbx
+    parse_bbx(occ,
+              freev,
+              unk,
+              bounds,
+              prior_bounds,
+              (max_depth-i)
+              );
+
+    prior_bounds = bounds;
+
+  }
+
   unk.clear();
   for(int x_i = bounds.min_x; x_i <= bounds.max_x; ++x_i)
   {
@@ -53,6 +80,39 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
     }
   }
 
+}
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+void parse_bbx(std::unordered_map<ind, occ_data> & occ,
+               std::unordered_map<ind, free_unk_data> & freev,
+               std::unordered_map<ind, free_unk_data> & unk,
+               corners &bounds,
+               corners &prior_bounds,
+               int depthl
+               )
+{
+  int x_i = bounds.min_x;
+  while(x_i <= bounds.max_x)
+  {
+    if((x_i > prior_bounds.min_x) && (x_i < prior_bounds.max_x)) { x_i = prior_bounds.max_x; }
+    int y_i = bounds.min_y;
+    while(y_i <= bounds.max_y)
+    {
+      if((y_i > prior_bounds.min_y) && (y_i < prior_bounds.max_y)) { y_i = prior_bounds.max_y; }
+      int z_i = bounds.min_z;
+      while(z_i <= bounds.max_z)
+      {
+        if((z_i > prior_bounds.min_z) && (z_i < prior_bounds.max_z)) { z_i = prior_bounds.max_z; }
+
+        // ADJUST EXTENT OF VOXELS
+
+        ++z_i;
+      }
+      ++y_i
+    }
+    ++z_i;
+  }
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//

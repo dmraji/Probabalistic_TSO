@@ -58,7 +58,6 @@ class h5_read
       const H5std_string MEMBER_Z("z");
       const H5std_string MEMBER_IND("scan_index");
       // const H5std_string MEMBER_INTENSITY("intensity_name");
-      // const H5std_string MEMBER_RING("ring_name");
 
       CompType h5_cldpt_type( sizeof(cldpt) );
       h5_cldpt_type.insertMember(MEMBER_X, 0, PredType::NATIVE_FLOAT);

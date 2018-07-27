@@ -40,7 +40,7 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
 
   for(int i = 0; i < max_depth; ++i)
   {
-    float thresh = max_thresh - (float)(2*i)
+    float thresh = max_thresh - (float)(2*i);
 
     bounds.get_corners(occ,
                        thresh
@@ -54,31 +54,32 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
               unk,
               bounds,
               prior_bounds,
-              (max_depth-i)
+              max_depth-i,
+              max_depth
               );
 
     prior_bounds = bounds;
 
   }
 
-  unk.clear();
-  for(int x_i = bounds.min_x; x_i <= bounds.max_x; ++x_i)
-  {
-    for(int y_i = bounds.min_y; y_i <= bounds.max_y; ++y_i)
-    {
-      for(int z_i = bounds.min_z; z_i <= bounds.max_z; ++z_i)
-      {
-        if(freev.count( {x_i, y_i, z_i} ) == 0)
-        {
-          if(occ.count( {x_i, y_i, z_i} ) == 0)
-          {
-            // Store unknown voxel indecies
-            ++unk[ {x_i, y_i, z_i} ].hits;
-          }
-        }
-      }
-    }
-  }
+  // unk.clear();
+  // for(int x_i = bounds.min_x; x_i <= bounds.max_x; ++x_i)
+  // {
+  //   for(int y_i = bounds.min_y; y_i <= bounds.max_y; ++y_i)
+  //   {
+  //     for(int z_i = bounds.min_z; z_i <= bounds.max_z; ++z_i)
+  //     {
+  //       if(freev.count( {x_i, y_i, z_i} ) == 0)
+  //       {
+  //         if(occ.count( {x_i, y_i, z_i} ) == 0)
+  //         {
+  //           // Store unknown voxel indecies
+  //           ++unk[ {x_i, y_i, z_i} ].hits;
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
 }
 
@@ -89,7 +90,8 @@ void parse_bbx(std::unordered_map<ind, occ_data> & occ,
                std::unordered_map<ind, free_unk_data> & unk,
                corners &bounds,
                corners &prior_bounds,
-               int depthl
+               int depthl,
+               int max_depth
                )
 {
   int x_i = bounds.min_x;
@@ -105,15 +107,105 @@ void parse_bbx(std::unordered_map<ind, occ_data> & occ,
       {
         if((z_i > prior_bounds.min_z) && (z_i < prior_bounds.max_z)) { z_i = prior_bounds.max_z; }
 
-        // ADJUST EXTENT OF VOXELS
+        // Store unknown voxel indecies at maximum depth
+        if(depthl == max_depth)
+        {
+          unk.clear();
+          if(freev.count( {x_i, y_i, z_i} ) == 0)
+          {
+            if(occ.count( {x_i, y_i, z_i} ) == 0)
+            {
 
+              ++unk[ {x_i, y_i, z_i} ].hits;
+            }
+          }
+        }
+        adjust_report rep = adj_extent(freev,
+                                       {x_i, y_i, z_i},
+                                       depthl
+                                       );
+        if(!rep.exist)
+        {
+          adjust_report rep = adj_extent(occ,
+                                         {x_i, y_i, z_i},
+                                         depthl
+                                         );
+        }
+        if(!rep.exist)
+        {
+          adjust_report rep = adj_extent(unk,
+                                         {x_i, y_i, z_i},
+                                         depthl
+                                         );
+        }
         ++z_i;
       }
-      ++y_i
+      ++y_i;
     }
-    ++z_i;
+    ++x_i;
+  }
+
+
+}
+
+adjust_report adj_extent(std::unordered_map<ind, free_unk_data> & vox,
+                         ind cind,
+                         int depthl
+                         )
+{
+  if(vox.count(cind) != 0)
+  {
+    if(vox[cind].sr_extent < depthl)
+    {
+      vox[cind].sr_extent *= 2;
+      return {true, 1};
+    }
+    else if(vox[cind].sr_extent > depthl)
+    {
+      vox[cind].sr_extent /= 2;
+      return {true, -1};
+    }
+    else { return {true, 0}; }
+  }
+  else { return {false, 0}; }
+}
+
+
+adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
+                         ind cind,
+                         int depthl
+                         )
+{
+  if(vox.count(cind) != 0)
+  {
+    if(vox[cind].sr_extent < depthl)
+    {
+      vox[cind].sr_extent *= 2;
+      return {true, 1};
+    }
+    else if(vox[cind].sr_extent > depthl)
+    {
+      vox[cind].sr_extent /= 2;
+      return {true, -1};
+    }
+    else { return {true, 0}; }
+  }
+  else { return {false, 0}; }
+}
+
+void prune(std::unordered_map<ind, occ_data> & occ,
+           std::unordered_map<ind, free_unk_data> & freev,
+           std::unordered_map<ind, free_unk_data> & unk
+           )
+{
+  for (auto it = occ.cbegin(); it != occ.cend();)
+  {
+    if(it->second.prior_extent < it->second.sr_extent) { occ.erase(it++); }
+    else { ++it; }
   }
 }
+
+void
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 

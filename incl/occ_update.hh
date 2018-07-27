@@ -27,7 +27,31 @@ float prob_update(std::unordered_map<ind, occ_data> & occ
 void parse_bbx(std::unordered_map<ind, occ_data> & occ,
                std::unordered_map<ind, free_unk_data> & freev,
                std::unordered_map<ind, free_unk_data> & unk,
-               corners bounds
+               corners &bounds,
+               corners &prior_bounds,
+               int depthl,
+               int max_depth
                );
+
+struct adjust_report
+{
+  bool exist;
+  int inc;
+};
+
+adjust_report adj_extent(std::unordered_map<ind, free_unk_data> & vox,
+                         ind cind,
+                         int depthl
+                         );
+
+adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
+                         ind cind,
+                         int depthl
+                         );
+
+void prune(std::unordered_map<ind, occ_data> & occ,
+           std::unordered_map<ind, free_unk_data> & freev,
+           std::unordered_map<ind, free_unk_data> & unk
+           );
 
 #endif

@@ -77,7 +77,8 @@ class out_cents
       {
         if(vox_iterator->second.mask)
         {
-          cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+          float half = 0.5f * vox_iterator->second.sr_extent;
+          cents.push_back({(vox_iterator->first.x + half) * resolution, (vox_iterator->first.y + half) * resolution, (vox_iterator->first.z + half) * resolution});
         }
       }
     }
@@ -94,7 +95,8 @@ class out_cents
       std::unordered_map <ind, free_unk_data> ::iterator vox_iterator;
       for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
       {
-        cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+        float half = 0.5f * vox_iterator->second.sr_extent;
+        cents.push_back({(vox_iterator->first.x + half) * resolution, (vox_iterator->first.y + half) * resolution, (vox_iterator->first.z + half) * resolution});
       }
     }
 

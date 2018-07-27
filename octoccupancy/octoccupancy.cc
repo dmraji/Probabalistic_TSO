@@ -105,6 +105,7 @@ int main(int argc, char** argv)
                        cloud_scans[scan_pts].z} );
       ++scan_pts;
     }
+    //combine data structures
 
     octomap::Pointcloud cloudscan;
 
@@ -137,30 +138,30 @@ int main(int argc, char** argv)
 
     // IMPLEMENTATION #1 - manual comb of bbx for unknown and occupied leafs
 
-    // for (double ix = l_bnd.x(); ix < u_bnd.x(); ix += res)
-    // {
-    //   for (double iy = l_bnd.y(); iy < u_bnd.y(); iy += res)
-    //   {
-    //     for (double iz = l_bnd.z(); iz < u_bnd.z(); iz += res)
-    //     {
-    //       if (!tree.search(ix, iy, iz))
-    //       {
-    //         // std::cout << "unknown" << '\n';
-    //         unk.push_back( {ix, iy, iz} );
-    //       }
-    //       else
-    //       {
-    //         query = point3d(ix, iy, iz);
-    //         result = tree.search(query);
-    //         print_query_info(query, result);
-    //         if(result != 0)
-    //         {
-    //           occ.push_back( {ix, iy, iz} );
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
+    for (double ix = l_bnd.x(); ix < u_bnd.x(); ix += res)
+    {
+      for (double iy = l_bnd.y(); iy < u_bnd.y(); iy += res)
+      {
+        for (double iz = l_bnd.z(); iz < u_bnd.z(); iz += res)
+        {
+          if (!tree.search(ix, iy, iz))
+          {
+            // std::cout << "unknown" << '\n';
+            unk.push_back( {ix, iy, iz} );
+          }
+          else
+          {
+            query = point3d(ix, iy, iz);
+            result = tree.search(query);
+            print_query_info(query, result);
+            if(result != 0)
+            {
+              occ.push_back( {ix, iy, iz} );
+            }
+          }
+        }
+      }
+    }
 
     // IMPLEMENTATION #2 - leaf_iterator comb for occupied voxels, black box "getUnknownLeafCenters" member function for unknown centers
 

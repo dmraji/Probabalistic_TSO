@@ -56,14 +56,15 @@ class h5_read
       const H5std_string MEMBER_X("x");
       const H5std_string MEMBER_Y("y");
       const H5std_string MEMBER_Z("z");
+      const H5std_string MEMBER_INTENSITY("intensity");
       const H5std_string MEMBER_IND("scan_index");
-      // const H5std_string MEMBER_INTENSITY("intensity_name");
 
       CompType h5_cldpt_type( sizeof(cldpt) );
       h5_cldpt_type.insertMember(MEMBER_X, 0, PredType::NATIVE_FLOAT);
       h5_cldpt_type.insertMember(MEMBER_Y, sizeof(float), PredType::NATIVE_FLOAT);
       h5_cldpt_type.insertMember(MEMBER_Z, sizeof(float)+sizeof(float), PredType::NATIVE_FLOAT);
-      h5_cldpt_type.insertMember(MEMBER_IND, sizeof(float)+sizeof(float)+sizeof(float), PredType::NATIVE_INT);
+      h5_cldpt_type.insertMember(MEMBER_INTENSITY, sizeof(float)+sizeof(float)+sizeof(float), PredType::NATIVE_FLOAT);
+      h5_cldpt_type.insertMember(MEMBER_IND, sizeof(float)+sizeof(float)+sizeof(float)+sizeof(float), PredType::NATIVE_INT);
 
       memset(buffer, 0, N);
       dset_cld.read(buffer, h5_cldpt_type);

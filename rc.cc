@@ -115,13 +115,13 @@ int main(int argc, char **argv)
   {
 
     int current_index = cloud_scans[scan_pts].scan_index;
-    // std::cout << current_index << "vs" << pose_ind << '\n';
+    std::cout << current_index << "vs" << pose_ind << '\n';
     // std::cout << scan_cld_cutoff << '\n';
 
-    if(current_index != pose_ind)
-    {
-      continue;
-    }
+    // if(current_index != pose_ind)
+    // {
+    //   continue;
+    // }
 
     pt origin = { pose_pts[pose_ind].x,
                   pose_pts[pose_ind].y,

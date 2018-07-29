@@ -2,6 +2,8 @@
 
 #include "occ_update.hh"
 
+#include "il_math.hh"
+
 // Update occupancy hash map with data per pose
 void vox_update(std::unordered_map<ind, free_unk_data> & opp,
                 std::unordered_map<ind, occ_data> & occ,
@@ -193,6 +195,12 @@ adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
   else { return {false, 0}; }
 }
 
+void rep_interp(adjust_report adj_rep,
+                )
+{
+  
+}
+
 void prune(std::unordered_map<ind, occ_data> & occ,
            std::unordered_map<ind, free_unk_data> & freev,
            std::unordered_map<ind, free_unk_data> & unk
@@ -200,8 +208,9 @@ void prune(std::unordered_map<ind, occ_data> & occ,
 {
   for (auto it = occ.cbegin(); it != occ.cend();)
   {
-    if(it->second.prior_extent < it->second.sr_extent) { occ.erase(it++); }
-    else { ++it; }
+    // if(it->second.prior_extent < it->second.sr_extent) { occ.erase(it++); }
+    // else { ++it; }
+    continue;
   }
 }
 
@@ -232,11 +241,11 @@ float prob_update(std::unordered_map<ind, occ_data> & occ
   {
     ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
 
-    if((occ[cpt].probability > (threshold * mean_probability)))
+    if((occ[cpt].probability * (1/cub(occ[cpt].sr_extent))) > (threshold * mean_probability))
     {
       occ[cpt].mask = true;
     }
-    else if((occ[cpt].probability < (threshold * mean_probability)))
+    else if((occ[cpt].probability * (1/cub(occ[cpt].sr_extent))) < (threshold * mean_probability))
     {
       occ[cpt].mask = false;
     }

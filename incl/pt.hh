@@ -12,6 +12,7 @@ struct pt
 struct cldpt
 {
   float x, y, z;
+  float intensity;
   int scan_index;
 };
 

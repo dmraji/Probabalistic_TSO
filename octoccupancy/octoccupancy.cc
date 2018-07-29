@@ -89,31 +89,18 @@ int main(int argc, char** argv)
     // std::cout << current_index << "vs" << pose_ind << '\n';
     // std::cout << scan_cld_cutoff << '\n';
 
-    if(current_index != pose_ind)
-    {
-      continue;
-    }
-
-    std::vector<pt> scan;
-    scan.reserve(25000);
     // int scan_pts = scan_cld_cutoff;
-
-    while(cloud_scans[scan_pts].scan_index == current_index)
-    {
-      scan.push_back( {cloud_scans[scan_pts].x,
-                       cloud_scans[scan_pts].y,
-                       cloud_scans[scan_pts].z} );
-      ++scan_pts;
-    }
-    //combine data structures
 
     octomap::Pointcloud cloudscan;
 
-    for(int j = 0; j < scan.size(); ++j)
+    while(cloud_scans[scan_pts].scan_index == current_index)
     {
-      // std::cout << j << '\n';
-      cloudscan.push_back(scan[j].x, scan[j].y, scan[j].z);
+      cloudscan.push_back(cloud_scans[scan_pts].x,
+                          cloud_scans[scan_pts].y,
+                          cloud_scans[scan_pts].z);
+      ++scan_pts;
     }
+
 
     origin = point3d(pose_pts[pose_ind].x,
                      pose_pts[pose_ind].y,
@@ -138,30 +125,30 @@ int main(int argc, char** argv)
 
     // IMPLEMENTATION #1 - manual comb of bbx for unknown and occupied leafs
 
-    for (double ix = l_bnd.x(); ix < u_bnd.x(); ix += res)
-    {
-      for (double iy = l_bnd.y(); iy < u_bnd.y(); iy += res)
-      {
-        for (double iz = l_bnd.z(); iz < u_bnd.z(); iz += res)
-        {
-          if (!tree.search(ix, iy, iz))
-          {
-            // std::cout << "unknown" << '\n';
-            unk.push_back( {ix, iy, iz} );
-          }
-          else
-          {
-            query = point3d(ix, iy, iz);
-            result = tree.search(query);
-            print_query_info(query, result);
-            if(result != 0)
-            {
-              occ.push_back( {ix, iy, iz} );
-            }
-          }
-        }
-      }
-    }
+    // for (double ix = l_bnd.x(); ix < u_bnd.x(); ix += res)
+    // {
+    //   for (double iy = l_bnd.y(); iy < u_bnd.y(); iy += res)
+    //   {
+    //     for (double iz = l_bnd.z(); iz < u_bnd.z(); iz += res)
+    //     {
+    //       if (!tree.search(ix, iy, iz))
+    //       {
+    //         // std::cout << "unknown" << '\n';
+    //         unk.push_back( {ix, iy, iz} );
+    //       }
+    //       else
+    //       {
+    //         query = point3d(ix, iy, iz);
+    //         result = tree.search(query);
+    //         print_query_info(query, result);
+    //         if(result != 0)
+    //         {
+    //           occ.push_back( {ix, iy, iz} );
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
 
     // IMPLEMENTATION #2 - leaf_iterator comb for occupied voxels, black box "getUnknownLeafCenters" member function for unknown centers
 
@@ -187,7 +174,6 @@ int main(int argc, char** argv)
       unk.push_back( {unk_p3d[i].x(), unk_p3d[i].y(), unk_p3d[i].z()} );
     }
 
-    std::vector<pt>().swap(scan);
     cloudscan.clear();
     timestamp(start, std::to_string(current_index));
 
@@ -196,9 +182,9 @@ int main(int argc, char** argv)
     // RESULT #2: Stall after ~100 pose-scans/5 minutes; syscheck revealed 13gigs of memory usage; manually killed;
   }
 
-  out_cents writer(occ,
-                   unk
-                   );
+  // out_cents writer(occ
+  //                  // unk
+  //                  );
 
   // origin = point3d(12., 12.5, -11.);
   //

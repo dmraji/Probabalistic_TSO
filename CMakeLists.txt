@@ -8,17 +8,16 @@ set(name rc)
 project(rc)
 
 # get the implementation files
-#file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
+file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
 
 # get the header files
-#file(GLOB headers ${PROJECT_SOURCE_DIR}/incl/*.hh)
-#include_directories(${PROJECT_SOURCE_DIR}/incl)
+file(GLOB headers ${PROJECT_SOURCE_DIR}/incl/*.hh)
+include_directories(${PROJECT_SOURCE_DIR}/incl)
 
 # create the executable
-#add_executable(${name} ${name}.cc ${sources} ${headers})
-add_executable(${name} ${name}.cc)
+add_executable(${name} ${name}.cc ${sources} ${headers})
 
-# get the external libraries
+# linking for external libs
 link_directories(/usr/lib/x86_64-linux-gnu/hdf5/serial)
 include_directories(/usr/include/hdf5/serial)
 target_link_libraries(${name} hdf5 hdf5_cpp)

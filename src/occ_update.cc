@@ -42,7 +42,16 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
 
   for(int i = 0; i < max_depth; ++i)
   {
-    float thresh = max_thresh - (float)(2*i);
+    float thresh;
+    if(i != (max_depth-1))
+    {
+      thresh = max_thresh - (float)(2*i);
+    }
+    else
+    {
+      // Ensure all voxels are caught in the final depth depth level
+      thresh = 0.0f;
+    }
 
     bounds.get_corners(occ,
                        thresh
@@ -50,7 +59,7 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
 
     bounds.even_out();
 
-    // parse bbx for unk with coarsest bbx
+
     parse_bbx(occ,
               freev,
               unk,
@@ -87,6 +96,7 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
+// Scan bounding box in accordance with probabilistically-determined depth level
 void parse_bbx(std::unordered_map<ind, occ_data> & occ,
                std::unordered_map<ind, free_unk_data> & freev,
                std::unordered_map<ind, free_unk_data> & unk,
@@ -109,37 +119,85 @@ void parse_bbx(std::unordered_map<ind, occ_data> & occ,
       {
         if((z_i > prior_bounds.min_z) && (z_i < prior_bounds.max_z)) { z_i = prior_bounds.max_z; }
 
+        ind cind = {x_i, y_i, z_i};
+
         // Store unknown voxel indecies at maximum depth
         if(depthl == max_depth)
         {
           unk.clear();
-          if(freev.count( {x_i, y_i, z_i} ) == 0)
+
+          if(freev.count(cind) == 0)
           {
-            if(occ.count( {x_i, y_i, z_i} ) == 0)
+            if(occ.count(cind) == 0)
             {
 
-              ++unk[ {x_i, y_i, z_i} ].hits;
+              ++unk[cind].hits;
             }
           }
         }
         adjust_report rep = adj_extent(freev,
-                                       {x_i, y_i, z_i},
+                                       cind,
                                        depthl
                                        );
         if(!rep.exist)
         {
           adjust_report rep = adj_extent(occ,
-                                         {x_i, y_i, z_i},
+                                         cind,
                                          depthl
                                          );
         }
         if(!rep.exist)
         {
           adjust_report rep = adj_extent(unk,
-                                         {x_i, y_i, z_i},
+                                         cind,
                                          depthl
                                          );
+
+          if(rep.exist)
+          {
+            switch(rep.inc)
+            {
+              case 1:
+                ind ind_par = cind.get_parent_ind(unk[cind].sr_extent
+                                                  );
+
+                std::vector<ind> children;
+                ind_par.get_child_inds(children,
+                                       unk[cind].sr_extent
+                                       );
+
+                unk[ind_par].sr_extent = unk[cind].sr_extent;
+                // Compressing children into parent
+                for(int child_i = 0; child_i < 8; ++child_i)
+                {
+                  if(unk.count(children[child_i]) != 0)
+                  {
+                    unk[ind_par].hits += unk[children[child_i]].hits;
+                    unk.erase(children[child_i]);
+                  }
+                }
+
+                break;
+              case -1:
+                std::vector<ind> children;
+                cind.get_child_inds(children,
+                                    unk[cind].sr_extent
+                                    );
+
+                // Subdivide parent, split assets between children;
+                for(int child_i = 0; child_i < 8; ++child_i)
+                {
+                  unk[children[child_i]].hits = unk[cind].hits / 8;
+                  unk[children[child_i]].sr_extent = unk[cind].sr_extent;
+                }
+
+                break;
+              case 0:
+                break;
+            }
+          }
         }
+
         ++z_i;
       }
       ++y_i;
@@ -150,6 +208,7 @@ void parse_bbx(std::unordered_map<ind, occ_data> & occ,
 
 }
 
+// Update voxel size and record changes in report data structure
 adjust_report adj_extent(std::unordered_map<ind, free_unk_data> & vox,
                          ind cind,
                          int depthl
@@ -171,7 +230,6 @@ adjust_report adj_extent(std::unordered_map<ind, free_unk_data> & vox,
   }
   else { return {false, 0}; }
 }
-
 
 adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
                          ind cind,
@@ -195,18 +253,14 @@ adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
   else { return {false, 0}; }
 }
 
-void rep_interp(adjust_report adj_rep,
-                )
-{
-  
-}
+
 
 void prune(std::unordered_map<ind, occ_data> & occ,
            std::unordered_map<ind, free_unk_data> & freev,
            std::unordered_map<ind, free_unk_data> & unk
            )
 {
-  for (auto it = occ.cbegin(); it != occ.cend();)
+  for(auto it = occ.cbegin(); it != occ.cend();)
   {
     // if(it->second.prior_extent < it->second.sr_extent) { occ.erase(it++); }
     // else { ++it; }
@@ -214,7 +268,6 @@ void prune(std::unordered_map<ind, occ_data> & occ,
   }
 }
 
-void
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 

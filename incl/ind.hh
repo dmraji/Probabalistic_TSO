@@ -20,10 +20,9 @@ struct ind
   }
 
   // Fills a vector<ind> of size=8 with child indicies of parent voxel
-  void get_child_inds(const ind& parent,
-                      std::vector<ind> & children,
-                      int pr_extent
-                      ) const
+  void get_child_inds(std::vector<ind> & children,
+                      int extent
+                      )
   {
     for(int z_i = 0; z_i < 2; ++z_i)
     {
@@ -31,24 +30,22 @@ struct ind
       {
         for(int x_i = 0; x_i < 2; ++x_i)
         {
-          children.push_back( { parent.x + (x_i * (pr_extent / 2)),
-                                parent.y + (y_i * (pr_extent / 2)),
-                                parent.z + (z_i * (pr_extent / 2)) } );
+          children.push_back( { this->x + (x_i * (extent)),
+                                this->y + (y_i * (extent)),
+                                this->z + (z_i * (extent)) } );
         }
       }
     }
   }
 
   // Returns an ind structure of parent voxel of input child
-  ind get_parent_ind(const ind& child,
-                     const ind& min,
-                     int pr_extent
-                     ) const
+  ind get_parent_ind(int extent
+                     )
   {
-    ind parent = { (child.x - (child.x % pr_extent) + (min.x % 2)),
-                   (child.y - (child.y % pr_extent) + (min.y % 2)),
-                   (child.z - (child.z % pr_extent) + (min.z % 2)) };
-    return parent;
+    ind ind_parent = { (this->x - (this->x % extent)),
+                       (this->y - (this->y % extent)),
+                       (this->z - (this->z % extent)) };
+    return ind_parent;
   }
 
 };

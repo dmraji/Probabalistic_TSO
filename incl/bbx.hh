@@ -53,9 +53,12 @@ struct corners
   // Ensure even extent in each axis of bounding box
   void even_out()
   {
-    if((std::abs(max_x - min_x) % 2) == 1) { ++max_x; }
-    if((std::abs(max_y - min_y) % 2) == 1) { ++max_y; }
-    if((std::abs(max_z - min_z) % 2) == 1) { ++max_z; }
+    if((max_x % 2) == 1) { ++max_x; }
+    if((min_x % 2) == 1) { --min_x; }
+    if((max_y % 2) == 1) { ++max_y; }
+    if((min_y % 2) == 1) { --min_y; }
+    if((max_z % 2) == 1) { ++max_z; }
+    if((min_z % 2) == 1) { --min_z; }
   }
 
 };

@@ -8,12 +8,12 @@ struct occ_data
   int hits;
   float probability;
   bool mask;
-  int sr_extent;
+  float intensity;
 
   occ_data() : hits(0),
                probability(0.0f),
                mask(false),
-               sr_extent(1)
+               intensity(0.0f)
                {}
 };
 

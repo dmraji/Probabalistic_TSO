@@ -3,21 +3,22 @@
 #include "occ_update.hh"
 
 // Update occupancy hash map with data per pose
-void vox_update(std::unordered_map<ind, free_unk_data> & opp,
-                std::unordered_map<ind, occ_data> & occ,
-                std::unordered_map<ind, free_unk_data> & freev,
-                std::unordered_map<ind, free_unk_data> & unk,
+void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
+                spp::sparse_hash_map<ind, occ_data> & occ,
+                spp::sparse_hash_map<ind, free_unk_data> & freev,
+                spp::sparse_hash_map<ind, free_unk_data> & unk,
                 int pose_ind
                 )
 {
 
-  std::unordered_map <ind, free_unk_data> ::iterator it;
+  spp::sparse_hash_map <ind, opp_data> ::iterator it;
   for(it = opp.begin(); it != opp.end(); ++it)
   {
-    ind cpt = {it->first.x, it->first.y, it->first.z};
+    ind cind = {it->first.x, it->first.y, it->first.z};
 
-    ++occ[cpt].hits;
-    occ[cpt].probability = (float)occ[cpt].hits / (float)(pose_ind+1);
+    ++occ[cind].hits;
+    occ[cind].probability = (float)occ[cind].hits / (float)(pose_ind+1);
+    occ[cind].intensity = it->second.intensity;
   }
 
   // Reset temporary occupancy map
@@ -58,12 +59,12 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Update occupancy masking with probabilistic calculation
-float prob_update(std::unordered_map<ind, occ_data> & occ
+float prob_update(spp::sparse_hash_map<ind, occ_data> & occ
                   )
 {
 
   float mean_probability = 0.0f;
-  std::unordered_map <ind, occ_data> ::iterator it;
+  spp::sparse_hash_map <ind, occ_data> ::iterator it;
 
   for(it = occ.begin(); it != occ.end(); ++it)
   {
@@ -73,8 +74,8 @@ float prob_update(std::unordered_map<ind, occ_data> & occ
   mean_probability = mean_probability / occ.size();
 
   // Cull occupied space according to occupancy probability
-  std::unordered_map <ind, occ_data> ::iterator it_cull;
-  float threshold = 1.5f;
+  spp::sparse_hash_map <ind, occ_data> ::iterator it_cull;
+  float threshold = 2.0f;
 
   for(it_cull = occ.begin(); it_cull != occ.end(); ++it_cull)
   {

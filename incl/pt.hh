@@ -6,12 +6,21 @@
 struct pt
 {
   const float x, y, z;
+  const float intensity;
+};
+
+struct pt_write
+{
+  const float x, y, z;
+  const float probability;
+  const float intensity;
 };
 
 // To read from hdf5
 struct cldpt
 {
   float x, y, z;
+  float intensity;
   int scan_index;
 };
 

@@ -9,6 +9,8 @@
 
 #include <cmath>
 
+#include <sparsepp/spp.h>
+
 #include "ind.hh"
 #include "occ_data.hh"
 
@@ -17,7 +19,7 @@ struct corners
   int min_x, min_y, min_z, max_x, max_y, max_z;
 
   // Bounding box constructor
-  corners(std::unordered_map<ind, occ_data> & occ,
+  corners(spp::sparse_hash_map<ind, occ_data> & occ,
           float mean_probability
           )
   {
@@ -28,13 +30,13 @@ struct corners
     min_z = occ.begin()->first.z;
     max_z = occ.begin()->first.z;
 
-    std::unordered_map <ind, occ_data> ::iterator it;
+    spp::sparse_hash_map <ind, occ_data> ::iterator it;
     for(it = occ.begin(); it != occ.end(); ++it)
     {
       if(occ[ {it->first.x, it->first.y, it->first.z} ].mask)
       {
         ind cpt = {it->first.x, it->first.y, it->first.z};
-        if(occ[cpt].probability > (5.0f * mean_probability))
+        if(occ[cpt].probability > (12.0f * mean_probability))
         {
           int x_v = cpt.x;
           int y_v = cpt.y;

@@ -20,9 +20,9 @@
 class out_cents
 {
   public:
-    out_cents(std::unordered_map<ind, occ_data> & occ,
-              std::unordered_map<ind, free_unk_data> & freev,
-              std::unordered_map<ind, free_unk_data> & unk,
+    out_cents(spp::sparse_hash_map<ind, occ_data> & occ,
+              spp::sparse_hash_map<ind, free_unk_data> & freev,
+              spp::sparse_hash_map<ind, free_unk_data> & unk,
               float resolution
               )
     {
@@ -30,7 +30,7 @@ class out_cents
       std::cout << "occupied voxels: " << occ.size() << '\n';
       std::cout << "unknown voxels: " << unk.size() << '\n';
 
-      std::vector<pt> cents_occ;
+      std::vector<pt_write> cents_occ;
       std::vector<pt> cents_free;
       std::vector<pt> cents_unknown;
 
@@ -64,26 +64,30 @@ class out_cents
     }
 
     // Overload for occupied voxels
-    void get_vox_cents(std::unordered_map <ind, occ_data> & vox,
-                       std::vector<pt> & cents,
+    void get_vox_cents(spp::sparse_hash_map <ind, occ_data> & vox,
+                       std::vector<pt_write> & cents,
                        float resolution
                        )
     {
       // Reserve for centers
       cents.reserve(vox.size());
       // Construct map iterator
-      std::unordered_map <ind, occ_data> ::iterator vox_iterator;
+      spp::sparse_hash_map <ind, occ_data> ::iterator vox_iterator;
       for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
       {
-        if(vox_iterator->second.mask)
+        if((vox_iterator->second.mask))
         {
-          cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
+          cents.push_back( {(vox_iterator->first.x + 0.5f) * resolution,
+                            (vox_iterator->first.y + 0.5f) * resolution,
+                            (vox_iterator->first.z + 0.5f) * resolution,
+                            (vox_iterator->second.probability),
+                            (vox_iterator->second.intensity)} );
         }
       }
     }
 
     // Overload for free/unk voxels
-    void get_vox_cents(std::unordered_map <ind, free_unk_data> & vox,
+    void get_vox_cents(spp::sparse_hash_map <ind, free_unk_data> & vox,
                       std::vector<pt> & cents,
                       float resolution
                       )
@@ -91,7 +95,7 @@ class out_cents
       // Reserve for centers
       cents.reserve(vox.size());
       // Construct map iterator
-      std::unordered_map <ind, free_unk_data> ::iterator vox_iterator;
+      spp::sparse_hash_map <ind, free_unk_data> ::iterator vox_iterator;
       for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
       {
         cents.push_back({(vox_iterator->first.x + 0.5f) * resolution, (vox_iterator->first.y + 0.5f) * resolution, (vox_iterator->first.z + 0.5f) * resolution});
@@ -107,7 +111,26 @@ class out_cents
       file.open(filename+".txt");
       for(int i = 0; i < cents.size(); ++i)
       {
-        file << cents[i].x << ", " << cents[i].y << ", " << cents[i].z << "\n";
+        file << cents[i].x << ", "
+             << cents[i].y << ", "
+             << cents[i].z << "\n";
+      }
+      file.close();
+    }
+
+    void write_cents(std::vector<pt_write> & cents,
+                     std::string filename
+                     )
+    {
+      std::ofstream file;
+      file.open(filename+".txt");
+      for(int i = 0; i < cents.size(); ++i)
+      {
+        file << cents[i].x << ", "
+             << cents[i].y << ", "
+             << cents[i].z << ", "
+             << cents[i].probability << ", "
+             << cents[i].intensity << "\n";
       }
       file.close();
     }

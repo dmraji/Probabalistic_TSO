@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <cstdio>
 
 #include <string>
 
@@ -26,6 +27,8 @@
 // Add following line to .bashrc to ensure H5 libs are found: export CPATH=/usr/include/hdf5/serial/
 #include "H5Cpp.h"
 
+#include <sparsepp/spp.h>
+
 // Data structure headers
 #include "ind.hh"
 #include "pt.hh"
@@ -39,9 +42,6 @@
 #include "occ_update.hh"
 #include "bbx.hh"
 #include "h5_read.hh"
-
-// Add following line to .bashrc to ensure H5 libs are found: export CPATH=/usr/include/hdf5/serial/
-#include "H5Cpp.h"
 
 using namespace std;
 
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
   timestamp(start, "start");
 
   // Read data from H5 files
-  h5_read reader("RunData.h5");
+  h5_read reader;
 
   int cld_len = reader.sizeup("/cld");
   cldpt *cloud_scans = new cldpt[cld_len];
@@ -92,13 +92,21 @@ int main(int argc, char **argv)
     depth_levels.push_back(std::pow(2, i));
   }
 
+  // // Hash tables for occupied voxels
+  // std::unordered_map <ind, opp_data> occ_per_pose;
+  // std::unordered_map <ind, occ_data> box_occ;
+  //
+  // // Hash tables for free and unknown voxels
+  // std::unordered_map <ind, free_unk_data> box_free;
+  // std::unordered_map <ind, free_unk_data> box_unknown;
+
   // Hash tables for occupied voxels
-  std::unordered_map <ind, free_unk_data> occ_per_pose;
-  std::unordered_map <ind, occ_data> box_occ;
+  spp::sparse_hash_map <ind, opp_data> occ_per_pose;
+  spp::sparse_hash_map <ind, occ_data> box_occ;
 
   // Hash tables for free and unknown voxels
-  std::unordered_map <ind, free_unk_data> box_free;
-  std::unordered_map <ind, free_unk_data> box_unknown;
+  spp::sparse_hash_map <ind, free_unk_data> box_free;
+  spp::sparse_hash_map <ind, free_unk_data> box_unknown;
 
   // Default resolution 10 cm
   float resolution = 0.1;
@@ -111,15 +119,13 @@ int main(int argc, char **argv)
 
   for(int pose_ind = 0; pose_ind < poses; ++pose_ind)
   {
-
     int current_index = cloud_scans[scan_pts].scan_index;
-    // std::cout << current_index << "vs" << pose_ind << '\n';
-    // std::cout << scan_cld_cutoff << '\n';
-
-    if(current_index != pose_ind)
+    if(current_index == 0)
     {
-      continue;
+      break;
     }
+    std::cout << current_index << "vs" << pose_ind << '\n';
+    // std::cout << scan_cld_cutoff << '\n';
 
     pt origin = { pose_pts[pose_ind].x,
                   pose_pts[pose_ind].y,
@@ -133,8 +139,13 @@ int main(int argc, char **argv)
     {
       scan.push_back( {cloud_scans[scan_pts].x,
                        cloud_scans[scan_pts].y,
-                       cloud_scans[scan_pts].z} );
+                       cloud_scans[scan_pts].z,
+                       cloud_scans[scan_pts].intensity} );
       ++scan_pts;
+      if(scan_pts == cld_len)
+      {
+        break;
+      }
     }
     // scan_cld_cutoff = scan_pts;
 
@@ -163,6 +174,9 @@ int main(int argc, char **argv)
                         f_floor(scan[scan_ind].y * (1/resolution)),
                         f_floor(scan[scan_ind].z * (1/resolution)) } ].hits;
 
+      occ_per_pose[ { f_floor(scan[scan_ind].x * (1/resolution)),
+                      f_floor(scan[scan_ind].y * (1/resolution)),
+                      f_floor(scan[scan_ind].z * (1/resolution)) } ].intensity = scan[scan_ind].intensity;
       // Ensure that destructor is called on ray vector
       std::vector<pt>().swap(ray);
     }
@@ -179,6 +193,9 @@ int main(int argc, char **argv)
 
     std::vector<pt>().swap(scan);
 
+    std::cout << "occ_size: " << box_occ.size() << '\n';
+    std::cout << "free_size: " << box_free.size() << '\n';
+    std::cout << "unk_size: " << box_unknown.size() << '\n';
   }
 
   out_cents writer(box_occ,

@@ -1,5 +1,8 @@
 // Reading scan data from H5 files (header)
 
+#ifndef h5_read_hh
+#define h5_read_hh
+
 #include <iostream>
 #include <cstring>
 
@@ -7,28 +10,15 @@
 
 #include "H5Cpp.h"
 
-class h5_file_opener
-{
-  public:
-
-    h5_file_opener()
-    {
-      using namespace H5;
-
-      const H5std_string FILE_NAME( "RunData.h5" );
-      H5File file( FILE_NAME, H5F_ACC_RDONLY );
-    }
-};
-
 class h5_read
 {
-  private:
-    h5_file_opener open_h5;
+  // private:
+    // h5_file_opener open_h5;
 
   public:
 
     // Constructor with open file inheritance
-    h5_read(std::string file_name) : open_h5() {}
+    // h5_read(std::string file_name) : open_h5() {}
 
     int sizeup(std::string dataset_name
                )
@@ -66,15 +56,15 @@ class h5_read
       const H5std_string MEMBER_X("x");
       const H5std_string MEMBER_Y("y");
       const H5std_string MEMBER_Z("z");
+      const H5std_string MEMBER_INTENSITY("intensity");
       const H5std_string MEMBER_IND("scan_index");
-      // const H5std_string MEMBER_INTENSITY("intensity_name");
-      // const H5std_string MEMBER_RING("ring_name");
 
       CompType h5_cldpt_type( sizeof(cldpt) );
       h5_cldpt_type.insertMember(MEMBER_X, 0, PredType::NATIVE_FLOAT);
       h5_cldpt_type.insertMember(MEMBER_Y, sizeof(float), PredType::NATIVE_FLOAT);
       h5_cldpt_type.insertMember(MEMBER_Z, sizeof(float)+sizeof(float), PredType::NATIVE_FLOAT);
-      h5_cldpt_type.insertMember(MEMBER_IND, sizeof(float)+sizeof(float)+sizeof(float), PredType::NATIVE_INT);
+      h5_cldpt_type.insertMember(MEMBER_INTENSITY, sizeof(float)+sizeof(float)+sizeof(float), PredType::NATIVE_FLOAT);
+      h5_cldpt_type.insertMember(MEMBER_IND, sizeof(float)+sizeof(float)+sizeof(float)+sizeof(float), PredType::NATIVE_INT);
 
       memset(buffer, 0, N);
       dset_cld.read(buffer, h5_cldpt_type);
@@ -143,3 +133,5 @@ class h5_read
     }
 
 };
+
+#endif

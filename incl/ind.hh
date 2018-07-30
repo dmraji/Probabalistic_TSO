@@ -3,6 +3,8 @@
 #ifndef ind_hh
 #define ind_hh
 
+#include <sparsepp/spp.h>
+
 // #include "multi_dim_array.hh"
 
 // Boost Libraries
@@ -10,7 +12,7 @@
 
 struct ind
 {
-  const int x, y, z;
+  int x, y, z;
 
   // Equality comparator overload
   bool operator==(const ind& other
@@ -20,10 +22,10 @@ struct ind
   }
 
   // Fills a 2x2x2 array with child indecies of parent voxel
-  void get_child_inds(const ind& parent,
+  void get_child_inds(ind& parent,
                       std::vector<ind> & children,
                       int pr_extent
-                      ) const
+                      )
   {
     for(int z_i = 0; z_i < 2; ++z_i)
     {
@@ -40,10 +42,10 @@ struct ind
   }
 
   // Returns an ind structure of parent voxel of input child
-  ind get_parent_ind(const ind& child,
-                     const ind& min,
+  ind get_parent_ind(ind& child,
+                     ind& min,
                      int pr_extent
-                     ) const
+                     )
   {
     ind parent = { (child.x - (child.x % pr_extent) + (min.x % 2)),
                    (child.y - (child.y % pr_extent) + (min.y % 2)),
@@ -63,9 +65,9 @@ namespace std
                         ) const
       {
         size_t seed = 0;
-        boost::hash_combine(seed, index.x);
-        boost::hash_combine(seed, index.y);
-        boost::hash_combine(seed, index.z);
+        spp::hash_combine(seed, index.x);
+        spp::hash_combine(seed, index.y);
+        spp::hash_combine(seed, index.z);
         return seed;
       }
     };

@@ -6,11 +6,19 @@
 struct free_unk_data
 {
   int hits;
-  int sr_extent;
 
-  free_unk_data() : hits(0),
-                    sr_extent(1)
+  free_unk_data() : hits(0)
                     {}
+};
+
+struct opp_data
+{
+  int hits;
+  float intensity;
+
+  opp_data() : hits(0),
+               intensity(0.0f)
+               {}
 };
 
 #endif

@@ -10,13 +10,19 @@ octoccupancy/cmake_install_cmake
 octoccupancy/Makefile
 
 # Yuge Text Files
-pos.txt
-ptcld.txt
-octoccupancy/ptcld.txt
-octoccupancy/pos.txt
+*.txt
+
+# Binary data files
+*.bin
+
+# H5 files
+*.h5
+
+# PLY files
+*.ply
 
 # Executable
-rc_main
+rc
 octoccupancy/octoccupancy
 
 # images

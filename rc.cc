@@ -26,6 +26,9 @@
 // Add following line to .bashrc to ensure H5 libs are found: export CPATH=/usr/include/hdf5/serial/
 #include "H5Cpp.h"
 
+// Sparse hash table
+#include <sparsepp/spp.h>
+
 // Data structure headers
 #include "ind.hh"
 #include "pt.hh"
@@ -81,7 +84,6 @@ int main(int argc, char **argv)
                         poses
                         );
 
-  // CONV TO ARGV
   int max_depth = 4;
   std::vector<int> depth_levels;
 
@@ -91,15 +93,15 @@ int main(int argc, char **argv)
   }
 
   // Hash tables for occupied voxels
-  std::unordered_map <ind, free_unk_data> occ_per_pose;
-  std::unordered_map <ind, occ_data> box_occ;
+  spp::sparse_hash_map <ind, free_unk_data> occ_per_pose;
+  spp::sparse_hash_map <ind, occ_data> box_occ;
   // box_occ.reserve(300000);
 
   // Hash tables for free and unknown voxels
-  std::unordered_map <ind, free_unk_data> box_free;
+  spp::sparse_hash_map <ind, free_unk_data> box_free;
   // box_free.reserve(1000000);
 
-  std::unordered_map <ind, free_unk_data> box_unknown;
+  spp::sparse_hash_map <ind, free_unk_data> box_unknown;
   // box_unknown.reserve(600000);
 
   // Default resolution 10 cm

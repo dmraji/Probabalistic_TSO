@@ -1,6 +1,7 @@
-# ray_bltizing
-Lightweight pointcloud raycasting;
-- ~30 ms/pose, holding occupied and free space, with occupancy probability tracking;
+# Probabalistic Tri-State Occupancy
+- Lightweight pointcloud raycasting;
+- Determine occupied, free & unknown space
+- Occupancy probability tracking for Ghosting reduction;
 - Fully running on CPU;
 - Benchmarked on Ubuntu 16.04 LTS Xenial 64-bit, Intel Core i7-4770 CPU @ 3.40GHz x 8;
 

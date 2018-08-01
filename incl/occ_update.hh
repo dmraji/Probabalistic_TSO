@@ -52,9 +52,9 @@ adjust_report adj_extent(spp::sparse_hash_map<ind, occ_data> & vox,
                          int depthl
                          );
 
-void prune(spp::sparse_hash_map<ind, occ_data> & occ,
-           spp::sparse_hash_map<ind, free_unk_data> & freev,
-           spp::sparse_hash_map<ind, free_unk_data> & unk
-           );
+// void prune(spp::sparse_hash_map<ind, occ_data> & occ,
+//            spp::sparse_hash_map<ind, free_unk_data> & freev,
+//            spp::sparse_hash_map<ind, free_unk_data> & unk
+//            );
 
 #endif

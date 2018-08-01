@@ -153,51 +153,7 @@ void parse_bbx(spp::sparse_hash_map<ind, occ_data> & occ,
                                          depthl
                                          );
 
-          if(rep.exist)
-          {
-            switch(rep.inc)
-            {
-              case 1:
-                {
-                  ind ind_par = cind.get_parent_ind(unk[cind].sr_extent
-                                                    );
 
-                  std::vector<ind> children;
-                  ind_par.get_child_inds(children,
-                                         unk[cind].sr_extent
-                                         );
-
-                  unk[ind_par].sr_extent = unk[cind].sr_extent;
-                  // Compressing children into parent
-                  for(int child_i = 0; child_i < 8; ++child_i)
-                  {
-                    if(unk.count(children[child_i]) != 0)
-                    {
-                      unk[ind_par].hits += unk[children[child_i]].hits;
-                      unk.erase(children[child_i]);
-                    }
-                  }
-                }
-                break;
-              case -1:
-                {
-                  std::vector<ind> children;
-                  cind.get_child_inds(children,
-                                      unk[cind].sr_extent
-                                      );
-
-                  // Subdivide parent, split assets between children;
-                  for(int child_i = 0; child_i < 8; ++child_i)
-                  {
-                    unk[children[child_i]].hits = unk[cind].hits / 8;
-                    unk[children[child_i]].sr_extent = unk[cind].sr_extent;
-                  }
-                }
-                break;
-              case 0:
-                break;
-            }
-          }
         }
 
         ++z_i;
@@ -216,21 +172,69 @@ adjust_report adj_extent(spp::sparse_hash_map<ind, free_unk_data> & vox,
                          int depthl
                          )
 {
+  adjust_report rep;
   if(vox.count(cind) != 0)
   {
     if(vox[cind].sr_extent < depthl)
     {
       vox[cind].sr_extent *= 2;
-      return {true, 1};
+      rep = {true, 1};
     }
     else if(vox[cind].sr_extent > depthl)
     {
       vox[cind].sr_extent /= 2;
-      return {true, -1};
+      rep = {true, -1};
     }
-    else { return {true, 0}; }
+    else { rep = {true, 0}; }
   }
-  else { return {false, 0}; }
+  else { rep = {false, 0}; }
+
+  if(rep.exist)
+  {
+    switch(rep.inc)
+    {
+      case 1:
+        {
+          ind ind_par = cind.get_parent_ind(vox[cind].sr_extent
+                                            );
+
+          std::vector<ind> children;
+          ind_par.get_child_inds(children,
+                                 vox[cind].sr_extent
+                                 );
+
+          vox[ind_par].sr_extent = vox[cind].sr_extent;
+          // Compressing children into parent
+          for(int child_i = 0; child_i < 8; ++child_i)
+          {
+            if(vox.count(children[child_i]) != 0)
+            {
+              vox[ind_par].hits += vox[children[child_i]].hits;
+              vox.erase(children[child_i]);
+            }
+          }
+        }
+        break;
+      case -1:
+        {
+          std::vector<ind> children;
+          cind.get_child_inds(children,
+                              vox[cind].sr_extent
+                              );
+
+          // Subdivide parent, split assets between children;
+          for(int child_i = 0; child_i < 8; ++child_i)
+          {
+            vox[children[child_i]].hits = vox[cind].hits / 8;
+            vox[children[child_i]].sr_extent = vox[cind].sr_extent;
+          }
+        }
+        break;
+      case 0:
+        break;
+    }
+  }
+  return rep;
 }
 
 adjust_report adj_extent(spp::sparse_hash_map<ind, occ_data> & vox,
@@ -238,37 +242,85 @@ adjust_report adj_extent(spp::sparse_hash_map<ind, occ_data> & vox,
                          int depthl
                          )
 {
+  adjust_report rep;
   if(vox.count(cind) != 0)
   {
     if(vox[cind].sr_extent < depthl)
     {
       vox[cind].sr_extent *= 2;
-      return {true, 1};
+      rep = {true, 1};
     }
     else if(vox[cind].sr_extent > depthl)
     {
       vox[cind].sr_extent /= 2;
-      return {true, -1};
+      rep = {true, -1};
     }
-    else { return {true, 0}; }
+    else { rep = {true, 0}; }
   }
-  else { return {false, 0}; }
-}
+  else { rep = {false, 0}; }
 
-
-
-void prune(spp::sparse_hash_map<ind, occ_data> & occ,
-           spp::sparse_hash_map<ind, free_unk_data> & freev,
-           spp::sparse_hash_map<ind, free_unk_data> & unk
-           )
-{
-  for(auto it = occ.cbegin(); it != occ.cend();)
+  if(rep.exist)
   {
-    // if(it->second.prior_extent < it->second.sr_extent) { occ.erase(it++); }
-    // else { ++it; }
-    continue;
+    switch(rep.inc)
+    {
+      case 1:
+        {
+          ind ind_par = cind.get_parent_ind(vox[cind].sr_extent
+                                            );
+
+          std::vector<ind> children;
+          ind_par.get_child_inds(children,
+                                 vox[cind].sr_extent
+                                 );
+
+          vox[ind_par].sr_extent = vox[cind].sr_extent;
+          // Compressing children into parent
+          for(int child_i = 0; child_i < 8; ++child_i)
+          {
+            if(vox.count(children[child_i]) != 0)
+            {
+              vox[ind_par].hits += vox[children[child_i]].hits;
+              vox.erase(children[child_i]);
+            }
+          }
+        }
+        break;
+      case -1:
+        {
+          std::vector<ind> children;
+          cind.get_child_inds(children,
+                              vox[cind].sr_extent
+                              );
+
+          // Subdivide parent, split assets between children;
+          for(int child_i = 0; child_i < 8; ++child_i)
+          {
+            vox[children[child_i]].hits = vox[cind].hits / 8;
+            vox[children[child_i]].sr_extent = vox[cind].sr_extent;
+          }
+        }
+        break;
+      case 0:
+        break;
+    }
   }
+  return rep;
 }
+
+
+
+// void prune(spp::sparse_hash_map<ind, occ_data> & occ,
+//            spp::sparse_hash_map<ind, free_unk_data> & freev,
+//            spp::sparse_hash_map<ind, free_unk_data> & unk
+//            )
+// {
+//   for(auto it = occ.cbegin(); it != occ.cend();)
+//   {
+//     // if(it->second.prior_extent < it->second.sr_extent) { occ.erase(it++); }
+//     // else { ++it; }
+//     continue;
+//   }
+// }
 
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//

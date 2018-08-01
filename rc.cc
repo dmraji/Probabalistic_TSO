@@ -84,13 +84,8 @@ int main(int argc, char **argv)
                         poses
                         );
 
-  int max_depth = 4;
-  std::vector<int> depth_levels;
-
-  for(int i = 0; i < max_depth; ++i)
-  {
-    depth_levels.push_back(std::pow(2, i));
-  }
+  // For AMR
+  int max_depth = 2;
 
   // Hash tables for occupied voxels
   spp::sparse_hash_map <ind, free_unk_data> occ_per_pose;
@@ -107,9 +102,6 @@ int main(int argc, char **argv)
   // Default resolution 10 cm
   float resolution = 0.1;
 
-  // int cloud_cut = 0;
-  // int cloud_chunk_len = int(floor(ptcld_len / path_len));
-
   // int scan_cld_cutoff = 0;
   int scan_pts = 0;
 
@@ -120,10 +112,11 @@ int main(int argc, char **argv)
     std::cout << current_index << "vs" << pose_ind << '\n';
     // std::cout << scan_cld_cutoff << '\n';
 
-    // if(current_index != pose_ind)
-    // {
-    //   continue;
-    // }
+    // Prevent stall on final scan
+    if(current_index == 0)
+    {
+      break;
+    }
 
     pt origin = { pose_pts[pose_ind].x,
                   pose_pts[pose_ind].y,
@@ -176,14 +169,17 @@ int main(int argc, char **argv)
                box_free,
                box_unknown,
                pose_ind,
-               max_depth,
-               7.5f
+               max_depth
                );
 
     timestamp(start,
               std::to_string(pose_ind));
 
     std::vector<pt>().swap(scan);
+
+    std::cout << "free voxels: " << box_free.size() << '\n';
+    std::cout << "occupied voxels: " << box_occ.size() << '\n';
+    std::cout << "unknown voxels: " << box_unknown.size() << '\n';
 
   }
 

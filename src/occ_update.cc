@@ -10,8 +10,7 @@ void vox_update(spp::sparse_hash_map<ind, free_unk_data> & opp,
                 spp::sparse_hash_map<ind, free_unk_data> & freev,
                 spp::sparse_hash_map<ind, free_unk_data> & unk,
                 int pose_ind,
-                int max_depth,
-                float max_thresh
+                int max_depth
                 )
 {
 
@@ -30,8 +29,9 @@ void vox_update(spp::sparse_hash_map<ind, free_unk_data> & opp,
   float mean_probability = prob_update(occ
                                        );
 
+  std::cout << "Mean Probability: " << mean_probability << '\n';
+
   // Retrieve bounding box
-  corners bounds(mean_probability);
   corners prior_bounds(mean_probability);
   prior_bounds.min_x = 0;
   prior_bounds.max_x = 0;
@@ -40,18 +40,20 @@ void vox_update(spp::sparse_hash_map<ind, free_unk_data> & opp,
   prior_bounds.min_z = 0;
   prior_bounds.max_z = 0;
 
-  for(int i = 0; i < max_depth; ++i)
+  for(int i = 1; i <= max_depth; ++i)
   {
     float thresh;
-    if(i != (max_depth-1))
+    if(i != max_depth)
     {
-      thresh = max_thresh - (float)(2*i);
+      thresh = (float)6 / (float)i;
     }
     else
     {
       // Ensure all voxels are caught in the final depth depth level
-      thresh = 0.0f;
+      thresh = 1.0f;
     }
+
+    corners bounds(mean_probability);
 
     bounds.get_corners(occ,
                        thresh
@@ -65,32 +67,13 @@ void vox_update(spp::sparse_hash_map<ind, free_unk_data> & opp,
               unk,
               bounds,
               prior_bounds,
-              max_depth-i,
+              (max_depth-i+1),
               max_depth
               );
 
     prior_bounds = bounds;
 
   }
-
-  // unk.clear();
-  // for(int x_i = bounds.min_x; x_i <= bounds.max_x; ++x_i)
-  // {
-  //   for(int y_i = bounds.min_y; y_i <= bounds.max_y; ++y_i)
-  //   {
-  //     for(int z_i = bounds.min_z; z_i <= bounds.max_z; ++z_i)
-  //     {
-  //       if(freev.count( {x_i, y_i, z_i} ) == 0)
-  //       {
-  //         if(occ.count( {x_i, y_i, z_i} ) == 0)
-  //         {
-  //           // Store unknown voxel indecies
-  //           ++unk[ {x_i, y_i, z_i} ].hits;
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
 
 }
 
@@ -106,35 +89,50 @@ void parse_bbx(spp::sparse_hash_map<ind, occ_data> & occ,
                int max_depth
                )
 {
+  if(depthl == max_depth)
+  {
+    unk.clear();
+  }
+
   int x_i = bounds.min_x;
   while(x_i <= bounds.max_x)
   {
-    if((x_i > prior_bounds.min_x) && (x_i < prior_bounds.max_x)) { x_i = prior_bounds.max_x; }
+    if((x_i > prior_bounds.min_x) && (x_i < prior_bounds.max_x))
+    {
+      x_i = prior_bounds.max_x;
+      continue;
+    }
     int y_i = bounds.min_y;
     while(y_i <= bounds.max_y)
     {
-      if((y_i > prior_bounds.min_y) && (y_i < prior_bounds.max_y)) { y_i = prior_bounds.max_y; }
+      if((y_i > prior_bounds.min_y) && (y_i < prior_bounds.max_y))
+      {
+        y_i = prior_bounds.max_y;
+        continue;
+      }
       int z_i = bounds.min_z;
       while(z_i <= bounds.max_z)
       {
-        if((z_i > prior_bounds.min_z) && (z_i < prior_bounds.max_z)) { z_i = prior_bounds.max_z; }
+        if((z_i > prior_bounds.min_z) && (z_i < prior_bounds.max_z))
+        {
+          z_i = prior_bounds.max_z;
+          continue;
+        }
 
         ind cind = {x_i, y_i, z_i};
 
-        // Store unknown voxel indecies at maximum depth
+        // Store unknown voxel indicies at maximum depth
         if(depthl == max_depth)
         {
-          unk.clear();
-
           if(freev.count(cind) == 0)
           {
             if(occ.count(cind) == 0)
             {
-
               ++unk[cind].hits;
             }
           }
         }
+
         adjust_report rep = adj_extent(freev,
                                        cind,
                                        depthl

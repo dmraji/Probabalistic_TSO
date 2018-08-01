@@ -3,6 +3,8 @@
 #ifndef occ_update_hh
 #define occ_update_hh
 
+#include <iostream>
+
 #include <unordered_map>
 #include <utility>
 #include <functional>
@@ -20,8 +22,7 @@ void vox_update(spp::sparse_hash_map<ind, free_unk_data> & opp,
                 spp::sparse_hash_map<ind, free_unk_data> & freev,
                 spp::sparse_hash_map<ind, free_unk_data> & unk,
                 int pose_ind,
-                int max_depth,
-                float max_thresh
+                int max_depth
                 );
 
 float prob_update(spp::sparse_hash_map<ind, occ_data> & occ

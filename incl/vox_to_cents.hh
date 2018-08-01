@@ -12,6 +12,9 @@
 #include <utility>
 #include <functional>
 
+// Sparse hash map
+#include <sparsepp/spp.h>
+
 #include "ind.hh"
 #include "pt.hh"
 #include "occ_data.hh"
@@ -20,9 +23,9 @@
 class out_cents
 {
   public:
-    out_cents(std::unordered_map<ind, occ_data> & occ,
-              std::unordered_map<ind, free_unk_data> & freev,
-              std::unordered_map<ind, free_unk_data> & unk,
+    out_cents(spp::sparse_hash_map<ind, occ_data> & occ,
+              spp::sparse_hash_map<ind, free_unk_data> & freev,
+              spp::sparse_hash_map<ind, free_unk_data> & unk,
               float resolution
               )
     {
@@ -64,7 +67,7 @@ class out_cents
     }
 
     // Overload for occupied voxels
-    void get_vox_cents(std::unordered_map <ind, occ_data> & vox,
+    void get_vox_cents(spp::sparse_hash_map <ind, occ_data> & vox,
                        std::vector<pt> & cents,
                        float resolution
                        )
@@ -72,7 +75,7 @@ class out_cents
       // Reserve for centers
       cents.reserve(vox.size());
       // Construct map iterator
-      std::unordered_map <ind, occ_data> ::iterator vox_iterator;
+      spp::sparse_hash_map <ind, occ_data> ::iterator vox_iterator;
       for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
       {
         if(vox_iterator->second.mask)
@@ -84,7 +87,7 @@ class out_cents
     }
 
     // Overload for free/unk voxels
-    void get_vox_cents(std::unordered_map <ind, free_unk_data> & vox,
+    void get_vox_cents(spp::sparse_hash_map <ind, free_unk_data> & vox,
                       std::vector<pt> & cents,
                       float resolution
                       )
@@ -92,7 +95,7 @@ class out_cents
       // Reserve for centers
       cents.reserve(vox.size());
       // Construct map iterator
-      std::unordered_map <ind, free_unk_data> ::iterator vox_iterator;
+      spp::sparse_hash_map <ind, free_unk_data> ::iterator vox_iterator;
       for(vox_iterator = vox.begin(); vox_iterator != vox.end(); ++vox_iterator)
       {
         float half = 0.5f * vox_iterator->second.sr_extent;

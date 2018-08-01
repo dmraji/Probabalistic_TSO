@@ -5,17 +5,17 @@
 #include "il_math.hh"
 
 // Update occupancy hash map with data per pose
-void vox_update(std::unordered_map<ind, free_unk_data> & opp,
-                std::unordered_map<ind, occ_data> & occ,
-                std::unordered_map<ind, free_unk_data> & freev,
-                std::unordered_map<ind, free_unk_data> & unk,
+void vox_update(spp::sparse_hash_map<ind, free_unk_data> & opp,
+                spp::sparse_hash_map<ind, occ_data> & occ,
+                spp::sparse_hash_map<ind, free_unk_data> & freev,
+                spp::sparse_hash_map<ind, free_unk_data> & unk,
                 int pose_ind,
                 int max_depth,
                 float max_thresh
                 )
 {
 
-  std::unordered_map <ind, free_unk_data> ::iterator it;
+  spp::sparse_hash_map <ind, free_unk_data> ::iterator it;
   for(it = opp.begin(); it != opp.end(); ++it)
   {
     ind cpt = {it->first.x, it->first.y, it->first.z};
@@ -97,9 +97,9 @@ void vox_update(std::unordered_map<ind, free_unk_data> & opp,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Scan bounding box in accordance with probabilistically-determined depth level
-void parse_bbx(std::unordered_map<ind, occ_data> & occ,
-               std::unordered_map<ind, free_unk_data> & freev,
-               std::unordered_map<ind, free_unk_data> & unk,
+void parse_bbx(spp::sparse_hash_map<ind, occ_data> & occ,
+               spp::sparse_hash_map<ind, free_unk_data> & freev,
+               spp::sparse_hash_map<ind, free_unk_data> & unk,
                corners &bounds,
                corners &prior_bounds,
                int depthl,
@@ -158,39 +158,41 @@ void parse_bbx(std::unordered_map<ind, occ_data> & occ,
             switch(rep.inc)
             {
               case 1:
-                ind ind_par = cind.get_parent_ind(unk[cind].sr_extent
-                                                  );
-
-                std::vector<ind> children;
-                ind_par.get_child_inds(children,
-                                       unk[cind].sr_extent
-                                       );
-
-                unk[ind_par].sr_extent = unk[cind].sr_extent;
-                // Compressing children into parent
-                for(int child_i = 0; child_i < 8; ++child_i)
                 {
-                  if(unk.count(children[child_i]) != 0)
+                  ind ind_par = cind.get_parent_ind(unk[cind].sr_extent
+                                                    );
+
+                  std::vector<ind> children;
+                  ind_par.get_child_inds(children,
+                                         unk[cind].sr_extent
+                                         );
+
+                  unk[ind_par].sr_extent = unk[cind].sr_extent;
+                  // Compressing children into parent
+                  for(int child_i = 0; child_i < 8; ++child_i)
                   {
-                    unk[ind_par].hits += unk[children[child_i]].hits;
-                    unk.erase(children[child_i]);
+                    if(unk.count(children[child_i]) != 0)
+                    {
+                      unk[ind_par].hits += unk[children[child_i]].hits;
+                      unk.erase(children[child_i]);
+                    }
                   }
                 }
-
                 break;
               case -1:
-                std::vector<ind> children;
-                cind.get_child_inds(children,
-                                    unk[cind].sr_extent
-                                    );
-
-                // Subdivide parent, split assets between children;
-                for(int child_i = 0; child_i < 8; ++child_i)
                 {
-                  unk[children[child_i]].hits = unk[cind].hits / 8;
-                  unk[children[child_i]].sr_extent = unk[cind].sr_extent;
-                }
+                  std::vector<ind> children;
+                  cind.get_child_inds(children,
+                                      unk[cind].sr_extent
+                                      );
 
+                  // Subdivide parent, split assets between children;
+                  for(int child_i = 0; child_i < 8; ++child_i)
+                  {
+                    unk[children[child_i]].hits = unk[cind].hits / 8;
+                    unk[children[child_i]].sr_extent = unk[cind].sr_extent;
+                  }
+                }
                 break;
               case 0:
                 break;
@@ -209,7 +211,7 @@ void parse_bbx(std::unordered_map<ind, occ_data> & occ,
 }
 
 // Update voxel size and record changes in report data structure
-adjust_report adj_extent(std::unordered_map<ind, free_unk_data> & vox,
+adjust_report adj_extent(spp::sparse_hash_map<ind, free_unk_data> & vox,
                          ind cind,
                          int depthl
                          )
@@ -231,7 +233,7 @@ adjust_report adj_extent(std::unordered_map<ind, free_unk_data> & vox,
   else { return {false, 0}; }
 }
 
-adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
+adjust_report adj_extent(spp::sparse_hash_map<ind, occ_data> & vox,
                          ind cind,
                          int depthl
                          )
@@ -255,9 +257,9 @@ adjust_report adj_extent(std::unordered_map<ind, occ_data> & vox,
 
 
 
-void prune(std::unordered_map<ind, occ_data> & occ,
-           std::unordered_map<ind, free_unk_data> & freev,
-           std::unordered_map<ind, free_unk_data> & unk
+void prune(spp::sparse_hash_map<ind, occ_data> & occ,
+           spp::sparse_hash_map<ind, free_unk_data> & freev,
+           spp::sparse_hash_map<ind, free_unk_data> & unk
            )
 {
   for(auto it = occ.cbegin(); it != occ.cend();)
@@ -272,12 +274,12 @@ void prune(std::unordered_map<ind, occ_data> & occ,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Update occupancy masking with probabilistic calculation
-float prob_update(std::unordered_map<ind, occ_data> & occ
+float prob_update(spp::sparse_hash_map<ind, occ_data> & occ
                   )
 {
 
   float mean_probability = 0.0f;
-  std::unordered_map <ind, occ_data> ::iterator it;
+  spp::sparse_hash_map <ind, occ_data> ::iterator it;
 
   for(it = occ.begin(); it != occ.end(); ++it)
   {
@@ -287,7 +289,7 @@ float prob_update(std::unordered_map<ind, occ_data> & occ
   mean_probability = mean_probability / occ.size();
 
   // Cull occupied space according to occupancy probability
-  std::unordered_map <ind, occ_data> ::iterator it_cull;
+  spp::sparse_hash_map <ind, occ_data> ::iterator it_cull;
   float threshold = 1.5f;
 
   for(it_cull = occ.begin(); it_cull != occ.end(); ++it_cull)

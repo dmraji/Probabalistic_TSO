@@ -9,6 +9,9 @@
 
 #include <cmath>
 
+// Sparse hash map
+#include <sparsepp/spp.h>
+
 #include "ind.hh"
 #include "occ_data.hh"
 
@@ -20,7 +23,7 @@ struct corners
   corners(float mean_probability) : mprob(mean_probability) {}
 
   // Bounding box constructor
-  void get_corners(std::unordered_map<ind, occ_data> & occ,
+  void get_corners(spp::sparse_hash_map<ind, occ_data> & occ,
                    float thresh
                    )
   {
@@ -31,7 +34,7 @@ struct corners
     min_z = occ.begin()->first.z;
     max_z = occ.begin()->first.z;
 
-    std::unordered_map <ind, occ_data> ::iterator it;
+    spp::sparse_hash_map <ind, occ_data> ::iterator it;
     for(it = occ.begin(); it != occ.end(); ++it)
     {
       if(occ[ {it->first.x, it->first.y, it->first.z} ].mask)

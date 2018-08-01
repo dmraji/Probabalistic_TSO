@@ -10,13 +10,13 @@
 
 struct ind
 {
-  const int x, y, z;
+  int x, y, z;
 
   // Equality comparator overload
   bool operator==(const ind& other
                   ) const
   {
-    return (x == other.x) && (y == other.y) && (z == other.z);
+    return (this->x == other.x) && (this->y == other.y) && (this->z == other.z);
   }
 
   // Fills a vector<ind> of size=8 with child indicies of parent voxel

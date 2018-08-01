@@ -3,6 +3,8 @@
 #ifndef bbx_hh
 #define bbx_hh
 
+#include <iostream>
+
 #include <unordered_map>
 #include <utility>
 #include <functional>
@@ -52,9 +54,19 @@ struct corners
   // Ensure even extent in each axis of bounding box
   void even_out()
   {
-    if((std::abs(max_x - min_x) % 2) == 1) { ++max_x; }
-    if((std::abs(max_y - min_y) % 2) == 1) { ++max_y; }
-    if((std::abs(max_z - min_z) % 2) == 1) { ++max_z; }
+    // if((std::abs(max_x - min_x) % 2) == 1) { ++max_x; }
+    // if((std::abs(max_y - min_y) % 2) == 1) { ++max_y; }
+    // if((std::abs(max_z - min_z) % 2) == 1) { ++max_z; }
+
+    if((max_x % 2) == 1) { ++this->max_x; }
+    if((min_x % 2) == 1) { --this->min_x; }
+    if((max_y % 2) == 1) { ++this->max_y; }
+    if((min_y % 2) == 1) { --this->min_y; }
+    if((max_z % 2) == 1) { ++this->max_z; }
+    if((min_z % 2) == 1) { --this->min_z; }
+    std::cout << "x: " << this->min_x << " " << this->max_x << '\n';
+    std::cout << "y: " << this->min_y << " " << this->max_y << '\n';
+    std::cout << "z: " << this->min_z << " " << this->max_z << '\n';
   }
 
 };

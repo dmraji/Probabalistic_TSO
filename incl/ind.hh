@@ -3,12 +3,12 @@
 #ifndef ind_hh
 #define ind_hh
 
+#include <iostream>
+#include <vector>
+
 #include <sparsepp/spp.h>
 
-// #include "multi_dim_array.hh"
-
-// Boost Libraries
-#include <boost/functional/hash.hpp>
+#include "occ_data.hh"
 
 struct ind
 {
@@ -21,10 +21,9 @@ struct ind
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
 
-  // Fills a 2x2x2 array with child indecies of parent voxel
-  void get_child_inds(ind& parent,
-                      std::vector<ind> & children,
-                      int pr_extent
+  // Fills a vector<ind> of size=8 with child indicies of parent voxel
+  void get_child_inds(std::vector<ind> & children,
+                      int extent
                       )
   {
     for(int z_i = 0; z_i < 2; ++z_i)
@@ -33,24 +32,48 @@ struct ind
       {
         for(int x_i = 0; x_i < 2; ++x_i)
         {
-          children.push_back( { parent.x + (x_i * (pr_extent / 2)),
-                                parent.y + (y_i * (pr_extent / 2)),
-                                parent.z + (z_i * (pr_extent / 2)) } );
+          children.push_back( { this->x + (x_i * (extent)),
+                                this->y + (y_i * (extent)),
+                                this->z + (z_i * (extent)) } );
         }
       }
     }
   }
 
   // Returns an ind structure of parent voxel of input child
-  ind get_parent_ind(ind& child,
-                     ind& min,
-                     int pr_extent
+  ind get_parent_ind(int extent
                      )
   {
-    ind parent = { (child.x - (child.x % pr_extent) + (min.x % 2)),
-                   (child.y - (child.y % pr_extent) + (min.y % 2)),
-                   (child.z - (child.z % pr_extent) + (min.z % 2)) };
-    return parent;
+    ind ind_parent = { (this->x - (this->x % extent)),
+                       (this->y - (this->y % extent)),
+                       (this->z - (this->z % extent)) };
+    return ind_parent;
+  }
+
+
+  bool pruneable(spp::sparse_hash_map<ind, occ_data> & vox,
+                 std::vector<ind> & node
+                 )
+  {
+    ind cind_corn = { this->x - (this->x % 2),
+                      this->y - (this->y % 2),
+                      this->z - (this->z % 2) };
+
+    for(int z_i = 0; z_i < 2; ++z_i)
+    {
+      for(int y_i = 0; y_i < 2; ++y_i)
+      {
+        for(int x_i = 0; x_i < 2; ++x_i)
+        {
+          node.push_back( { cind_corn.x + x_i,
+                            cind_corn.y + y_i,
+                            cind_corn.z + z_i } );
+          if(vox.count( node[ (z_i + 1) * (y_i + 1) * (z_i + 1) - 1 ] ) == 0) { return false; }
+        }
+      }
+    }
+    if(node.size() != 8) { std::cout << node.size() << '\n'; }
+    return true;
   }
 
 };

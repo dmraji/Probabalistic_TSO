@@ -117,7 +117,7 @@ int main(int argc, char **argv)
   // int scan_cld_cutoff = 0;
   int scan_pts = 0;
 
-  for(int pose_ind = 0; pose_ind < poses; ++pose_ind)
+  for(int pose_ind = 0; pose_ind < 100; ++pose_ind)
   {
     int current_index = cloud_scans[scan_pts].scan_index;
     if(current_index == 0)

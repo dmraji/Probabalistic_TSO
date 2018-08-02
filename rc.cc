@@ -4,6 +4,15 @@
 
 #include <string>
 
+#include <signal.h>
+#include <unistd.h>
+#include <cstring>
+#include <atomic>
+
+#include "stdlib.h"
+#include "stdio.h"
+#include "string.h"
+
 #include <vector>
 #include <algorithm>
 
@@ -45,26 +54,98 @@
 
 using namespace std;
 
+std::atomic<bool> quit(false);    // signal flag
+
+void got_signal(int)
+{
+  quit.store(true);
+}
+
+class sigint_check
+{
+  public:
+    ~sigint_check() { std::cout << "destructor\n"; }
+};
+
+struct report_manager
+{
+  std::ofstream file;
+
+  report_manager()
+  {
+    // Start report file
+    file.open("usage_rep.txt");
+  }
+  ~report_manager()
+  {
+    file.close();
+  }
+};
+
+int parseLine(char* line)
+{
+  // This assumes that a digit will be found and the line ends in " Kb".
+  int i = strlen(line);
+  const char* p = line;
+  while (*p <'0' || *p > '9') p++;
+  line[i-3] = '\0';
+  i = atoi(p);
+  return i;
+}
+
+int getValue()
+{ //Note: this value is in KB!
+  FILE* file = fopen("/proc/self/status", "r");
+  int result = -1;
+  char line[128];
+
+  while (fgets(line, 128, file) != NULL)
+  {
+    if (strncmp(line, "VmRSS:", 6) == 0)
+    {
+      result = parseLine(line);
+      break;
+    }
+  }
+  fclose(file);
+  return result;
+}
+
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Simple timestamp function
-void timestamp(double start,
-               std::string checkpt
-               )
+double timestamp(double start,
+                 string checkpt
+                 )
 {
   double elapsed;
   elapsed = (std::clock() - start) / (double) CLOCKS_PER_SEC;
-  std::cout << "timestamp at " << checkpt << ": " << elapsed << '\n';
+  std::cout << "timestamp at " << checkpt << ": " << elapsed << endl;
+  return elapsed;
 }
 
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 int main(int argc, char **argv)
 {
+  // Setup to catch sigint
+  struct sigaction sa;
+  memset( &sa, 0, sizeof(sa) );
+  sa.sa_handler = got_signal;
+  sigfillset(&sa.sa_mask);
+  sigaction(SIGINT,&sa,NULL);
+
+  sigint_check SI_C;
+  int check = 1;
+  while(check == 1)
+  {
+
   // Start clock
   std::clock_t start;
   start = std::clock();
-  timestamp(start, "start");
+  double startstamp = timestamp(start, "start");
+
+  report_manager rep_man;
 
   // Read data from H5 files
   h5_read reader;
@@ -188,14 +269,20 @@ int main(int argc, char **argv)
                pose_ind
                );
 
-    timestamp(start,
-              std::to_string(pose_ind));
-
     std::vector<pt>().swap(scan);
 
     std::cout << "occ_size: " << box_occ.size() << '\n';
     std::cout << "free_size: " << box_free.size() << '\n';
     std::cout << "unk_size: " << box_unknown.size() << '\n';
+
+    double posestamp = timestamp(start,
+                                 std::to_string(pose_ind));
+    int mem_in_use = getValue();
+    std::cout << mem_in_use << '\n';
+    rep_man.file << posestamp << ", " << mem_in_use << "\n";
+
+    // Check for sigint;
+    if(quit.load()) goto BREAKER;
   }
 
   out_cents writer(box_occ,
@@ -204,9 +291,14 @@ int main(int argc, char **argv)
                    resolution
                    );
 
-  timestamp(start,
-            "end"
-            );
+  double endstamp = timestamp(start,
+                              "end"
+                              );
+
+    check = 0;
+  }
+  BREAKER:
+    ;
 
   return 0;
 }

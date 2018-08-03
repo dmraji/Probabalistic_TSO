@@ -170,6 +170,10 @@ int main(int argc, char** argv)
     {
 
       int current_index = cloud_scans[scan_pts].scan_index;
+      if(current_index == 0)
+      {
+        break;
+      }
       // std::cout << current_index << "vs" << pose_ind << '\n';
       // std::cout << scan_cld_cutoff << '\n';
 
@@ -246,9 +250,12 @@ int main(int argc, char** argv)
       //   //   std::cout << "Node value: " << it->getValue() << std::endl;
       //   // }
         // std::cout << "Node value: " << it->getValue() << std::endl;
-        occ[ {it.getCoordinate().x(),
-              it.getCoordinate().y(),
-              it.getCoordinate().z()} ] = it->getValue();
+        if(tree.isNodeOccupied(*it))
+        {
+          occ[ {it.getCoordinate().x(),
+                it.getCoordinate().y(),
+                it.getCoordinate().z()} ] = it->getOccupancy();
+        }
       }
 
       // octomap::point3d_list unknowns_leaf_list;
@@ -276,9 +283,8 @@ int main(int argc, char** argv)
 
     }
 
-    // out_cents writer(occ
-    //                  // unk
-    //                  );
+    out_cents writer(occ
+                     );
 
     // origin = point3d(12., 12.5, -11.);
     //

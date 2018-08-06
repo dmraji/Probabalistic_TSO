@@ -12,6 +12,8 @@
 #include <utility>
 #include <functional>
 
+#include <sparsepp/spp.h>
+
 #include "ind.hh"
 #include "pt.hh"
 #include "occ_data.hh"
@@ -20,33 +22,28 @@
 class out_cents
 {
   public:
-    out_cents(std::vector<pt> & occ,
-              std::vector<pt> & unk
+    out_cents(spp::sparse_hash_map<pt, float> & occ
               )
     {
       std::cout << "occupied voxels: " << occ.size() << '\n';
-      std::cout << "unknown voxels: " << unk.size() << '\n';
 
       write_cents(occ,
                   "occupied"
                   );
 
-      write_cents(unk,
-                  "unknown"
-                  );
-
     }
 
     // Write cents to file
-    void write_cents(std::vector<pt> & cents,
+    void write_cents(spp::sparse_hash_map<pt, float> & cents,
                      std::string filename
                      )
     {
       std::ofstream file;
       file.open(filename+".txt");
-      for(int i = 0; i < cents.size(); ++i)
+      spp::sparse_hash_map<pt, float> ::iterator it;
+      for(it = cents.begin(); it != cents.end(); ++it)
       {
-        file << cents[i].x << ", " << cents[i].y << ", " << cents[i].z << "\n";
+        file << it->first.x << ", " << it->first.y << ", " << it->first.z << ", " << it->second << "\n";
       }
       file.close();
     }

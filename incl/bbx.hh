@@ -39,6 +39,7 @@ struct corners
       {
         ind cpt = {it->first.x, it->first.y, it->first.z};
         if(occ[cpt].probability > (12.0f * mean_probability))
+        // if(occ[cpt].probability > 2.0f)
         {
           int x_v = cpt.x;
           int y_v = cpt.y;

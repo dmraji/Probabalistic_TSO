@@ -223,10 +223,10 @@ int main(int argc, char **argv)
                        cloud_scans[scan_pts].z,
                        cloud_scans[scan_pts].intensity} );
       ++scan_pts;
-      if(scan_pts == cld_len)
-      {
-        break;
-      }
+      // if(scan_pts == cld_len)
+      // {
+      //   break;
+      // }
     }
     // scan_cld_cutoff = scan_pts;
 
@@ -258,6 +258,7 @@ int main(int argc, char **argv)
       occ_per_pose[ { f_floor(scan[scan_ind].x * (1/resolution)),
                       f_floor(scan[scan_ind].y * (1/resolution)),
                       f_floor(scan[scan_ind].z * (1/resolution)) } ].intensity = scan[scan_ind].intensity;
+
       // Ensure that destructor is called on ray vector
       std::vector<pt>().swap(ray);
     }

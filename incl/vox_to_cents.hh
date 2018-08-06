@@ -44,7 +44,8 @@ class out_cents
         // Otherwise, determine if node is pruneable; if it is, mark nodes for masking;
         std::vector<ind> node;
         if(cind.pruneable(occ,
-                           node))
+                          node
+                          ))
         {
           // std::cout << "pr?" << '\n';
           occ[node[0]].extent *= 2;
@@ -106,7 +107,8 @@ class out_cents
       spp::sparse_hash_map <ind, occ_data> ::iterator it;
       for(it = vox.begin(); it != vox.end(); ++it)
       {
-        if((it->second.mask))
+        // if((it->second.mask))
+        if((it->second.mask) || !(it->second.mask))
         {
           ++sizeo;
           cents.push_back( {(it->first.x + (0.5f * it->second.extent)) * resolution,

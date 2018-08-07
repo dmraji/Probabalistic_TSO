@@ -17,6 +17,7 @@ void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
     ind cind = {it->first.x,
                 it->first.y,
                 it->first.z};
+    it->second.intensity /= it->second.hits;
 
     ++occ[cind].hits;
     occ[cind].intensity = it->second.intensity;
@@ -65,13 +66,23 @@ float prob_update(spp::sparse_hash_map<ind, occ_data> & occ,
                   int pose_ind
                   )
 {
+  spp::sparse_hash_map<int, int> z_vals;
+  int max_z_dens = 0;
 
   float mean_probability = 0.0f;
   spp::sparse_hash_map <ind, occ_data> ::iterator it;
   for(it = occ.begin(); it != occ.end(); ++it)
   {
-    it->second.probability = (float)it->second.hits / (float)(pose_ind+1);
-    if(it->second.probability == 1) { it->first.print(); }
+    // Update z-density of occupied cells
+    ++z_vals[it->first.z];
+    if(z_vals[it->first.z] > max_z_dens) { max_z_dens = z_vals[it->first.z]; }
+  }
+
+  for(it = occ.begin(); it != occ.end(); ++it)
+  {
+    // Update probability
+    it->second.probability = (float)(z_vals[it->first.z] / (float)max_z_dens) *
+                             (float)it->second.hits / (float)(pose_ind+1);
     mean_probability = mean_probability + it->second.probability;
   }
 

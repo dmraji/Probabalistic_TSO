@@ -164,22 +164,8 @@ int main(int argc, char **argv)
                         poses
                         );
 
-  // CONV TO ARGV
-  int max_depth = 3;
-  std::vector<int> depth_levels;
-
-  for(int i = 0; i < max_depth; ++i)
-  {
-    depth_levels.push_back(std::pow(2, i));
-  }
-
-  // // Hash tables for occupied voxels
-  // std::unordered_map <ind, opp_data> occ_per_pose;
-  // std::unordered_map <ind, occ_data> box_occ;
-  //
-  // // Hash tables for free and unknown voxels
-  // std::unordered_map <ind, free_unk_data> box_free;
-  // std::unordered_map <ind, free_unk_data> box_unknown;
+  // Baseline usage after file read
+  rep_man.file << timestamp(start, "data read") << ", " << getValue() << "\n";
 
   // Hash tables for occupied voxels
   spp::sparse_hash_map <ind, opp_data> occ_per_pose;
@@ -257,7 +243,7 @@ int main(int argc, char **argv)
 
       occ_per_pose[ { f_floor(scan[scan_ind].x * (1/resolution)),
                       f_floor(scan[scan_ind].y * (1/resolution)),
-                      f_floor(scan[scan_ind].z * (1/resolution)) } ].intensity = scan[scan_ind].intensity;
+                      f_floor(scan[scan_ind].z * (1/resolution)) } ].intensity += scan[scan_ind].intensity;
 
       // Ensure that destructor is called on ray vector
       std::vector<pt>().swap(ray);

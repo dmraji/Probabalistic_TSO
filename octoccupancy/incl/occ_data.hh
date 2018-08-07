@@ -7,9 +7,11 @@ struct occ_data
 {
   float probability;
   float sr_extent;
+  int intensity;
 
   occ_data() : probability(0.0f),
-               sr_extent(1)
+               sr_extent(1),
+               intensity(0)
                {}
 };
 

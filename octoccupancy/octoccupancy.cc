@@ -150,6 +150,7 @@ int main(int argc, char** argv)
                           poses
                           );
 
+    // Baseline usage after file read
     rep_man.file << timestamp(start, "data read") << ", " << getValue() << "\n";
 
     // Default octree constructor; create empty tree and set res of leafs to resolution

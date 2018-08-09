@@ -11,7 +11,6 @@
 
 #include "stdlib.h"
 #include "stdio.h"
-#include "string.h"
 
 #include <vector>
 #include <algorithm>
@@ -22,16 +21,6 @@
 
 #include <cmath>
 #include <ctime>
-
-// Boost Libraries
-#include <boost/functional/hash.hpp>
-// #include <boost/multi_index_container.hpp>
-// #include <boost/multi_index/sequenced_index.hpp>
-// #include <boost/multi_index/ordered_index.hpp>
-// #include <boost/multi_index/hashed_index.hpp>
-// #include <boost/multi_index/composite_key.hpp>
-// #include <boost/multi_index/identity.hpp>
-// #include <boost/multi_index/member.hpp>
 
 // Add following line to .bashrc to ensure H5 libs are found: export CPATH=/usr/include/hdf5/serial/
 #include "H5Cpp.h"

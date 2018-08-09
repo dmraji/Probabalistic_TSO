@@ -14,17 +14,20 @@ void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
   spp::sparse_hash_map <ind, opp_data> ::iterator it;
   for(it = opp.begin(); it != opp.end(); ++it)
   {
-    ind cind = {it->first.x, it->first.y, it->first.z};
+    ind cind = {it->first.x,
+                it->first.y,
+                it->first.z};
+    it->second.intensity /= it->second.hits;
 
     ++occ[cind].hits;
-    occ[cind].probability = (float)occ[cind].hits / (float)(pose_ind+1);
     occ[cind].intensity = it->second.intensity;
   }
 
   // Reset temporary occupancy map
   opp.clear();
 
-  float mean_probability = prob_update(occ
+  float mean_probability = prob_update(occ,
+                                       pose_ind
                                        );
 
   // Retrieve bounding box
@@ -59,15 +62,27 @@ void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
 //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Update occupancy masking with probabilistic calculation
-float prob_update(spp::sparse_hash_map<ind, occ_data> & occ
+float prob_update(spp::sparse_hash_map<ind, occ_data> & occ,
+                  int pose_ind
                   )
 {
+  spp::sparse_hash_map<int, int> z_vals;
+  int max_z_dens = 0;
 
   float mean_probability = 0.0f;
   spp::sparse_hash_map <ind, occ_data> ::iterator it;
+  for(it = occ.begin(); it != occ.end(); ++it)
+  {
+    // Update z-density of occupied cells
+    ++z_vals[it->first.z];
+    if(z_vals[it->first.z] > max_z_dens) { max_z_dens = z_vals[it->first.z]; }
+  }
 
   for(it = occ.begin(); it != occ.end(); ++it)
   {
+    // Update probability
+    it->second.probability = (float)(z_vals[it->first.z] / (float)max_z_dens) *
+                             (float)it->second.hits / (float)(pose_ind+1);
     mean_probability = mean_probability + it->second.probability;
   }
 
@@ -79,15 +94,17 @@ float prob_update(spp::sparse_hash_map<ind, occ_data> & occ
 
   for(it_cull = occ.begin(); it_cull != occ.end(); ++it_cull)
   {
-    ind cpt = {it_cull->first.x, it_cull->first.y, it_cull->first.z};
+    ind cind = {it_cull->first.x,
+                it_cull->first.y,
+                it_cull->first.z};
 
-    if((occ[cpt].probability > (threshold * mean_probability)))
+    if((occ[cind].probability > (threshold * mean_probability)))
     {
-      occ[cpt].mask = true;
+      occ[cind].mask = true;
     }
-    else if((occ[cpt].probability < (threshold * mean_probability)))
+    else if((occ[cind].probability < (threshold * mean_probability)))
     {
-      occ[cpt].mask = false;
+      occ[cind].mask = false;
     }
   }
 

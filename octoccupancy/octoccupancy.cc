@@ -146,9 +146,12 @@ int main(int argc, char** argv)
     pose *pose_pts = new pose[poses];
     rot_mat *rots = new rot_mat[poses];
     reader.data_read_pose(pose_pts,
-                         rots,
-                         poses
-                         );
+                          rots,
+                          poses
+                          );
+
+    // Baseline usage after file read
+    rep_man.file << timestamp(start, "data read") << ", " << getValue() << "\n";
 
     // Default octree constructor; create empty tree and set res of leafs to resolution
     float res = 0.1;
@@ -157,7 +160,7 @@ int main(int argc, char** argv)
     // std::vector<pt> occ;
     // std::vector<pt> unk;
 
-    spp::sparse_hash_map<pt, float> occ;
+    spp::sparse_hash_map<pt, occ_data> occ;
     spp::sparse_hash_map<pt, int> unk;
 
     point3d origin (0., 0., 0.);
@@ -254,7 +257,10 @@ int main(int argc, char** argv)
         {
           occ[ {it.getCoordinate().x(),
                 it.getCoordinate().y(),
-                it.getCoordinate().z()} ] = it->getOccupancy();
+                it.getCoordinate().z()} ].probability = it->getOccupancy();
+          occ[ {it.getCoordinate().x(),
+                it.getCoordinate().y(),
+                it.getCoordinate().z()} ].sr_extent = it.getSize();
         }
       }
 
@@ -275,7 +281,7 @@ int main(int argc, char** argv)
       cloudscan.clear();
       double posestamp = timestamp(start, std::to_string(pose_ind));
       int mem_in_use = getValue();
-      std::cout << mem_in_use << '\n';
+      // std::cout << mem_in_use << '\n';
       rep_man.file << posestamp << ", " << mem_in_use << "\n";
 
       // Check for sigint;

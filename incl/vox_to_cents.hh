@@ -27,37 +27,38 @@ class out_cents
               )
     {
 
-      spp::sparse_hash_map<ind, int> blacklist;
-      for(auto it = occ.cbegin(); it != occ.cend(); ++it)
-      {
-        ind cind = it->first;
+      // spp::sparse_hash_map<ind, int> blacklist;
+      // for(auto it = occ.cbegin(); it != occ.cend(); ++it)
+      // {
+      //   ind cind = it->first;
+      //
+      //   // If key has been marked for masking, mask it
+      //   if(blacklist.count(cind) != 0)
+      //   {
+      //     // std::cout << "bl" << '\n';
+      //     occ[cind].mask = false;
+      //     blacklist.erase(cind);
+      //     continue;
+      //   }
+      //
+      //   // Otherwise, determine if node is pruneable; if it is, mark nodes for masking;
+      //   std::vector<ind> node;
+      //   if(cind.pruneable(occ,
+      //                     node
+      //                     ))
+      //   {
+      //     // std::cout << "pr?" << '\n';
+      //     occ[node[0]].extent *= 2;
+      //     // Don't blacklist corner index; it will represent larger vox
+      //     for(int i = 1; i < node.size(); ++i) {
+      //       // std::cout << "i: " << i << '\n';
+      //        ++blacklist[node[i]]; }
+      //   }
+      //   node.clear();
+      // }
 
-        // If key has been marked for masking, mask it
-        if(blacklist.count(cind) != 0)
-        {
-          // std::cout << "bl" << '\n';
-          occ[cind].mask = false;
-          blacklist.erase(cind);
-          continue;
-        }
-
-        // Otherwise, determine if node is pruneable; if it is, mark nodes for masking;
-        std::vector<ind> node;
-        if(cind.pruneable(occ,
-                           node))
-        {
-          // std::cout << "pr?" << '\n';
-          occ[node[0]].extent *= 2;
-          // Don't blacklist corner index; it will represent larger vox
-          for(int i = 1; i < node.size(); ++i) {
-            // std::cout << "i: " << i << '\n';
-             ++blacklist[node[i]]; }
-        }
-        node.clear();
-      }
-
-      std::cout << "free voxels: " << freev.size() << '\n';
       std::cout << "occupied voxels: " << occ.size() << '\n';
+      std::cout << "free voxels: " << freev.size() << '\n';
       std::cout << "unknown voxels: " << unk.size() << '\n';
 
       std::vector<pt_write> cents_occ;
@@ -106,7 +107,8 @@ class out_cents
       spp::sparse_hash_map <ind, occ_data> ::iterator it;
       for(it = vox.begin(); it != vox.end(); ++it)
       {
-        if((it->second.mask))
+        // if((it->second.mask))
+        if((it->second.mask) || !(it->second.mask))
         {
           ++sizeo;
           cents.push_back( {(it->first.x + (0.5f * it->second.extent)) * resolution,

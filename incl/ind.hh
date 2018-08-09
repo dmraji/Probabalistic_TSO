@@ -21,6 +21,10 @@ struct ind
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
 
+  void print() const { std::cout << this->x << ", "
+                                 << this->y << ", "
+                                 << this->z << '\n'; }
+
   // Fills a vector<ind> of size=8 with child indicies of parent voxel
   void get_child_inds(std::vector<ind> & children,
                       int extent

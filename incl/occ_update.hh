@@ -21,7 +21,8 @@ void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
                 int pose_ind
                 );
 
-float prob_update(spp::sparse_hash_map<ind, occ_data> & occ
-                 );
+float prob_update(spp::sparse_hash_map<ind, occ_data> & occ,
+                  int pose_ind
+                  );
 
 #endif

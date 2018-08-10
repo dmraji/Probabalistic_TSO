@@ -169,6 +169,7 @@ int main(int argc, char **argv)
 
   // Hash tables for occupied voxels
   spp::sparse_hash_map <ind, opp_data> occ_per_pose;
+  spp::sparse_hash_map <ind, int> pocc;
   spp::sparse_hash_map <ind, occ_data> box_occ;
 
   // Hash tables for free and unknown voxels
@@ -231,9 +232,14 @@ int main(int argc, char **argv)
       for(int i = 0; i < ray.size(); ++i)
       {
         // Mark free space
-        ++box_free[ { f_floor(ray[i].x * (1/resolution)),
-                      f_floor(ray[i].y * (1/resolution)),
-                      f_floor(ray[i].z * (1/resolution)) } ].hits;
+        ind cind = { f_floor(ray[i].x * (1/resolution)),
+                     f_floor(ray[i].y * (1/resolution)),
+                     f_floor(ray[i].z * (1/resolution)) };
+        ++box_free[cind].hits;
+        if(box_occ.count(cind) != 0)
+        {
+          if(box_occ[cind].hits > 0) { --box_occ[cind].hits; }
+        }
       }
 
       // Mark occupied space in temporary map
@@ -250,6 +256,7 @@ int main(int argc, char **argv)
     }
 
     vox_update(occ_per_pose,
+               pocc,
                box_occ,
                box_free,
                box_unknown,
@@ -275,6 +282,7 @@ int main(int argc, char **argv)
   out_cents writer(box_occ,
                    box_free,
                    box_unknown,
+                   pocc,
                    resolution
                    );
 

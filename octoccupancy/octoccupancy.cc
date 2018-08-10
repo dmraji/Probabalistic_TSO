@@ -204,10 +204,10 @@ int main(int argc, char** argv)
                             false
                             );
 
-      point3d l_bnd (0., 0., 0.);
-      point3d u_bnd (0., 0., 0.);
+      // point3d l_bnd (0., 0., 0.);
+      // point3d u_bnd (0., 0., 0.);
 
-      cloudscan.calcBBX(l_bnd, u_bnd);
+      // cloudscan.calcBBX(l_bnd, u_bnd);
 
       point3d query (0., 0., 0.);
       OcTreeNode* result = tree.search(query);
@@ -225,17 +225,7 @@ int main(int argc, char** argv)
       //       if (!tree.search(ix, iy, iz))
       //       {
       //         // std::cout << "unknown" << '\n';
-      //         unk.push_back( {ix, iy, iz} );
-      //       }
-      //       else
-      //       {
-      //         query = point3d(ix, iy, iz);
-      //         result = tree.search(query);
-      //         print_query_info(query, result);
-      //         if(result != 0)
-      //         {
-      //           occ.push_back( {ix, iy, iz} );
-      //         }
+      //         ++unk[ {ix, iy, iz} ];
       //       }
       //     }
       //   }
@@ -243,6 +233,8 @@ int main(int argc, char** argv)
 
       // IMPLEMENTATION #2 - leaf_iterator comb for occupied voxels, black box "getUnknownLeafCenters" member function for unknown centers
 
+      pt l_bnd = {0., 0., 0.};
+      pt u_bnd = {0., 0., 0.};
       for(OcTree::leaf_iterator it = tree.begin_leafs(), end=tree.end_leafs(); it!= end; ++it)
       {
       //   //manipulate node, e.g.:
@@ -261,6 +253,34 @@ int main(int argc, char** argv)
           occ[ {it.getCoordinate().x(),
                 it.getCoordinate().y(),
                 it.getCoordinate().z()} ].sr_extent = it.getSize();
+
+          if(it->getOccupancy() > 0.9)
+          {
+            if(it.getCoordinate().x() < l_bnd.x) { l_bnd.x = it.getCoordinate().x(); }
+            else { if(it.getCoordinate().x() > u_bnd.x) { u_bnd.x = it.getCoordinate().x(); } }
+            if(it.getCoordinate().y() < l_bnd.y) { l_bnd.y = it.getCoordinate().y(); }
+            else { if(it.getCoordinate().y() > u_bnd.y) { u_bnd.y = it.getCoordinate().y(); } }
+            if(it.getCoordinate().z() < l_bnd.z) { l_bnd.z = it.getCoordinate().z(); }
+            else { if(it.getCoordinate().z() > u_bnd.z) { u_bnd.z = it.getCoordinate().z(); } }
+          }
+        }
+      }
+      std::cout << l_bnd.x << " " << u_bnd.x << '\n';
+      std::cout << l_bnd.y << " " << u_bnd.y << '\n';
+      std::cout << l_bnd.z << " " << u_bnd.z << '\n';
+
+      for(double ix = l_bnd.x; ix < u_bnd.x; ix += res)
+      {
+        for(double iy = l_bnd.y; iy < u_bnd.y; iy += res)
+        {
+          for(double iz = l_bnd.z; iz < u_bnd.z; iz += res)
+          {
+            if(!tree.search(ix, iy, iz))
+            {
+              // std::cout << "unknown" << '\n';
+              ++unk[ {ix, iy, iz} ];
+            }
+          }
         }
       }
 
@@ -289,7 +309,8 @@ int main(int argc, char** argv)
 
     }
 
-    out_cents writer(occ
+    out_cents writer(occ,
+                     unk
                      );
 
     // origin = point3d(12., 12.5, -11.);

@@ -4,6 +4,7 @@
 
 // Update occupancy hash map with data per pose
 void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
+                spp::sparse_hash_map<ind, int> & pocc,
                 spp::sparse_hash_map<ind, occ_data> & occ,
                 spp::sparse_hash_map<ind, free_unk_data> & freev,
                 spp::sparse_hash_map<ind, free_unk_data> & unk,
@@ -20,6 +21,7 @@ void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
     it->second.intensity /= it->second.hits;
 
     ++occ[cind].hits;
+    if(occ[cind].hits > 60) { ++pocc[cind]; }
     occ[cind].intensity = it->second.intensity;
   }
 
@@ -81,8 +83,9 @@ float prob_update(spp::sparse_hash_map<ind, occ_data> & occ,
   for(it = occ.begin(); it != occ.end(); ++it)
   {
     // Update probability
-    it->second.probability = (float)(z_vals[it->first.z] / (float)max_z_dens) *
-                             (float)it->second.hits / (float)(pose_ind+1);
+    // it->second.probability = (float)(z_vals[it->first.z] / (float)max_z_dens) *
+    //                          (float)it->second.hits / (float)(pose_ind+1);
+    it->second.probability = (float)it->second.hits / (float)(pose_ind+1);
     mean_probability = mean_probability + it->second.probability;
   }
 

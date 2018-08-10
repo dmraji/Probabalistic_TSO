@@ -23,6 +23,7 @@ class out_cents
     out_cents(spp::sparse_hash_map<ind, occ_data> & occ,
               spp::sparse_hash_map<ind, free_unk_data> & freev,
               spp::sparse_hash_map<ind, free_unk_data> & unk,
+              spp::sparse_hash_map<ind, int> & pocc,
               float resolution
               )
     {
@@ -65,6 +66,13 @@ class out_cents
       std::vector<pt> cents_free;
       std::vector<pt> cents_unknown;
 
+      // Adjust probs for defs
+      spp::sparse_hash_map <ind, int> ::iterator it;
+      for(it = pocc.begin(); it != pocc.end(); ++it)
+      {
+        occ[it->first].probability = 1;
+      }
+
       get_vox_cents(occ,
                     cents_occ,
                     resolution
@@ -91,6 +99,7 @@ class out_cents
       write_cents(cents_unknown,
                   "unknown"
                   );
+
 
     }
 

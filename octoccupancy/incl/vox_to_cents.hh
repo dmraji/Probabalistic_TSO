@@ -22,13 +22,18 @@
 class out_cents
 {
   public:
-    out_cents(spp::sparse_hash_map<pt, occ_data> & occ
+    out_cents(spp::sparse_hash_map<pt, occ_data> & occ,
+              spp::sparse_hash_map<pt, int> & unk
               )
     {
       std::cout << "occupied voxels: " << occ.size() << '\n';
 
       write_cents(occ,
-                  "occupied"
+                  "occupied_octo"
+                  );
+
+      write_cents(unk,
+                  "unknown_octo"
                   );
 
     }
@@ -48,6 +53,22 @@ class out_cents
              << it->first.z << ", "
              << it->second.probability << ", "
              << it->second.sr_extent << "\n";
+      }
+      file.close();
+    }
+
+    void write_cents(spp::sparse_hash_map<pt, int> & cents,
+                     std::string filename
+                     )
+    {
+      std::ofstream file;
+      file.open(filename+".txt");
+      spp::sparse_hash_map<pt, int> ::iterator it;
+      for(it = cents.begin(); it != cents.end(); ++it)
+      {
+        file << it->first.x << ", "
+             << it->first.y << ", "
+             << it->first.z << "\n";
       }
       file.close();
     }

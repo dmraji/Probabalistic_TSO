@@ -15,6 +15,7 @@
 #include "bbx.hh"
 
 void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
+                spp::sparse_hash_map<ind, int> & pocc,
                 spp::sparse_hash_map<ind, occ_data> & occ,
                 spp::sparse_hash_map<ind, free_unk_data> & freev,
                 spp::sparse_hash_map<ind, free_unk_data> & unk,

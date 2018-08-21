@@ -14,6 +14,8 @@
 #include "free_unk_data.hh"
 #include "bbx.hh"
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
                 spp::sparse_hash_map<ind, int> & pocc,
                 spp::sparse_hash_map<ind, occ_data> & occ,
@@ -21,6 +23,8 @@ void vox_update(spp::sparse_hash_map<ind, opp_data> & opp,
                 spp::sparse_hash_map<ind, free_unk_data> & unk,
                 int pose_ind
                 );
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 float prob_update(spp::sparse_hash_map<ind, occ_data> & occ,
                   int pose_ind

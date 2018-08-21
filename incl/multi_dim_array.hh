@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <array>
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 template <class T, std::size_t I, std::size_t... J>
 struct MultiDimArray
 {
@@ -14,6 +16,8 @@ struct MultiDimArray
   using type = std::array<Nested, I>;
   // typedef std::array<Nested, I> type;
 };
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 template <class T, std::size_t I>
 struct MultiDimArray<T, I>

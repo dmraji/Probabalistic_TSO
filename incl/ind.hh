@@ -10,9 +10,13 @@
 
 #include "occ_data.hh"
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 struct ind
 {
   int x, y, z;
+
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
 
   // Equality comparator overload
   bool operator==(const ind& other
@@ -21,10 +25,16 @@ struct ind
     return (x == other.x) && (y == other.y) && (z == other.z);
   }
 
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
+
+  // Simple Coutput function for easier debugging
   void print() const { std::cout << this->x << ", "
                                  << this->y << ", "
                                  << this->z << '\n'; }
 
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
+
+  // FOR AMR (BEGIN)
   // Fills a vector<ind> of size=8 with child indicies of parent voxel
   void get_child_inds(std::vector<ind> & children,
                       int extent
@@ -44,6 +54,8 @@ struct ind
     }
   }
 
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
+
   // Returns an ind structure of parent voxel of input child
   ind get_parent_ind(int extent
                      )
@@ -54,7 +66,9 @@ struct ind
     return ind_parent;
   }
 
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
 
+  // Query whether given index of sparse hash map is collapseable
   bool pruneable(spp::sparse_hash_map<ind, occ_data> & vox,
                  std::vector<ind> & node
                  )
@@ -80,7 +94,11 @@ struct ind
     return true;
   }
 
+  // FOR AMR (END)
+
 };
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 // Hash template for indexing
 namespace std

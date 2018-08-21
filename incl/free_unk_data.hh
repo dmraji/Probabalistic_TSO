@@ -3,22 +3,14 @@
 #ifndef free_unk_data_hh
 #define free_unk_data_hh
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 struct free_unk_data
 {
   int hits;
 
   free_unk_data() : hits(0)
                     {}
-};
-
-struct opp_data
-{
-  int hits;
-  float intensity;
-
-  opp_data() : hits(0),
-               intensity(0.0f)
-               {}
 };
 
 #endif

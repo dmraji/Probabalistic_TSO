@@ -17,9 +17,13 @@
 #include "occ_data.hh"
 #include "free_unk_data.hh"
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 class out_cents
 {
   public:
+
+    // Writing work is done in constructor after instantiation in main
     out_cents(spp::sparse_hash_map<ind, occ_data> & occ,
               spp::sparse_hash_map<ind, free_unk_data> & freev,
               spp::sparse_hash_map<ind, free_unk_data> & unk,
@@ -28,51 +32,57 @@ class out_cents
               )
     {
 
-      // spp::sparse_hash_map<ind, int> blacklist;
-      // for(auto it = occ.cbegin(); it != occ.cend(); ++it)
-      // {
-      //   ind cind = it->first;
-      //
-      //   // If key has been marked for masking, mask it
-      //   if(blacklist.count(cind) != 0)
-      //   {
-      //     // std::cout << "bl" << '\n';
-      //     occ[cind].mask = false;
-      //     blacklist.erase(cind);
-      //     continue;
-      //   }
-      //
-      //   // Otherwise, determine if node is pruneable; if it is, mark nodes for masking;
-      //   std::vector<ind> node;
-      //   if(cind.pruneable(occ,
-      //                     node
-      //                     ))
-      //   {
-      //     // std::cout << "pr?" << '\n';
-      //     occ[node[0]].extent *= 2;
-      //     // Don't blacklist corner index; it will represent larger vox
-      //     for(int i = 1; i < node.size(); ++i) {
-      //       // std::cout << "i: " << i << '\n';
-      //        ++blacklist[node[i]]; }
-      //   }
-      //   node.clear();
-      // }
+      /* @ Write AMR method, indev (BEGIN)
 
-      std::cout << "occupied voxels: " << occ.size() << '\n';
-      std::cout << "free voxels: " << freev.size() << '\n';
-      std::cout << "unknown voxels: " << unk.size() << '\n';
+      spp::sparse_hash_map<ind, int> blacklist;
+      for(auto it = occ.cbegin(); it != occ.cend(); ++it)
+      {
+        ind cind = it->first;
 
-      std::vector<pt_write> cents_occ;
+        // If key has been marked for masking, mask it
+        if(blacklist.count(cind) != 0)
+        {
+          // std::cout << "bl" << '\n';
+          occ[cind].mask = false;
+          blacklist.erase(cind);
+          continue;
+        }
+
+        // Otherwise, determine if node is pruneable; if it is, mark nodes for masking;
+        std::vector<ind> node;
+        if(cind.pruneable(occ,
+                          node
+                          ))
+        {
+          // std::cout << "pr?" << '\n';
+          occ[node[0]].extent *= 2;
+          // Don't blacklist corner index; it will represent larger vox
+          for(int i = 1; i < node.size(); ++i) {
+            // std::cout << "i: " << i << '\n';
+             ++blacklist[node[i]]; }
+        }
+        node.clear();
+      }
+
+      @ Write AMR method, indev (END) */
+
+      // std::cout << "occupied voxels: " << occ.size() << '\n';
+      // std::cout << "free voxels: " << freev.size() << '\n';
+      // std::cout << "unknown voxels: " << unk.size() << '\n';
+
+      // Vectors to hold voxel centers
+      std::vector<pt_occ> cents_occ;
       std::vector<pt> cents_free;
       std::vector<pt> cents_unknown;
 
-      // Adjust probs for defs
+      // Adjust probabilities for "definitely occupied voxels"
       spp::sparse_hash_map <ind, int> ::iterator it;
       for(it = pocc.begin(); it != pocc.end(); ++it)
       {
         occ[it->first].probability = 1;
       }
 
+      // Calls to non-member to fetch center coords of voxels given sparse hash data structures
       get_vox_cents(occ,
                     cents_occ,
                     resolution
@@ -88,6 +98,7 @@ class out_cents
                     resolution
                     );
 
+      // Calls to non-member to write center coords to file
       write_cents(cents_occ,
                   "occupied"
                   );
@@ -103,17 +114,23 @@ class out_cents
 
     }
 
+    //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_/
+
     // Get real-space centers of occupied voxels
     void get_vox_cents(spp::sparse_hash_map <ind, occ_data> & vox,
-                       std::vector<pt_write> & cents,
+                       std::vector<pt_occ> & cents,
                        float resolution
                        )
     {
       int sizeo = 0;
+
       // Reserve for centers
       cents.reserve(vox.size());
+
       // Construct map iterator
       spp::sparse_hash_map <ind, occ_data> ::iterator it;
+
+      // Iterate through map and add center data to vector for each voxel
       for(it = vox.begin(); it != vox.end(); ++it)
       {
         // if((it->second.mask))
@@ -127,8 +144,10 @@ class out_cents
                             (it->second.intensity)} );
         }
       }
-      std::cout << sizeo << '\n';
+      // std::cout << sizeo << '\n';
     }
+
+    //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_/
 
     // Get real-space centers of free/unk voxels
     void get_vox_cents(spp::sparse_hash_map <ind, free_unk_data> & vox,
@@ -138,8 +157,11 @@ class out_cents
     {
       // Reserve for centers
       cents.reserve(vox.size());
+
       // Construct map iterator
       spp::sparse_hash_map <ind, free_unk_data> ::iterator it;
+
+      // Iterate through map and add center data to vector for each voxel
       for(it = vox.begin(); it != vox.end(); ++it)
       {
         cents.push_back( {(it->first.x + 0.5f) * resolution,
@@ -148,13 +170,18 @@ class out_cents
       }
     }
 
-    // Write cents to file
+    //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_/
+
+    // Write cents to file (free and unknown)
     void write_cents(std::vector<pt> & cents,
                      std::string filename
                      )
     {
+      // Instantiate output file stream
       std::ofstream file;
       file.open(filename+".txt");
+
+      // Iterate through vector and write each center to file
       for(int i = 0; i < cents.size(); ++i)
       {
         file << cents[i].x << ", "
@@ -164,12 +191,18 @@ class out_cents
       file.close();
     }
 
-    void write_cents(std::vector<pt_write> & cents,
+    //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_/
+
+    // Write cents to file (occupied)
+    void write_cents(std::vector<pt_occ> & cents,
                      std::string filename
                      )
     {
+      // Instantiate output file stream
       std::ofstream file;
       file.open(filename+".txt");
+
+      // Iterate through vector and write center to file, along with probability and intensity
       for(int i = 0; i < cents.size(); ++i)
       {
         file << cents[i].x << ", "

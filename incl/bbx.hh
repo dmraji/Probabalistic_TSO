@@ -16,15 +16,20 @@
 #include "ind.hh"
 #include "occ_data.hh"
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 struct corners
 {
   int min_x, min_y, min_z, max_x, max_y, max_z;
+
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
 
   // Bounding box constructor
   corners(spp::sparse_hash_map<ind, occ_data> & occ,
           float mean_probability
           )
   {
+    // Set initial corner guesses to first element of pointcloud
     min_x = occ.begin()->first.x;
     max_x = occ.begin()->first.x;
     min_y = occ.begin()->first.y;
@@ -32,15 +37,21 @@ struct corners
     min_z = occ.begin()->first.z;
     max_z = occ.begin()->first.z;
 
+    // Construct map iterator
     spp::sparse_hash_map <ind, occ_data> ::iterator it;
+
+    // Iterate through masked pointcloud, update corners if occupancy probability is high enough
     for(it = occ.begin(); it != occ.end(); ++it)
     {
       if(occ[ {it->first.x, it->first.y, it->first.z} ].mask)
       {
         ind cpt = {it->first.x, it->first.y, it->first.z};
+
+        // Arbitrary threshold of 0.2 occupancy probability
         if(occ[cpt].probability > (0.2))
         // if(occ[cpt].probability > 2.0f)
         {
+          // Update corners
           int x_v = cpt.x;
           int y_v = cpt.y;
           int z_v = cpt.z;
@@ -52,13 +63,16 @@ struct corners
     }
   }
 
-  // Ensure even extent in each axis of bounding box
+  //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_
+
+  // Ensure even extent in each axis of bounding box; Necessary to guarantee easy AMR functionality
   void even_out()
   {
     // if((std::abs(max_x - min_x) % 2) == 1) { ++max_x; }
     // if((std::abs(max_y - min_y) % 2) == 1) { ++max_y; }
     // if((std::abs(max_z - min_z) % 2) == 1) { ++max_z; }
 
+    // Use modulo to even out each extent of bbx
     if((max_x % 2) == 1) { ++this->max_x; }
     if((min_x % 2) == 1) { --this->min_x; }
     if((max_y % 2) == 1) { ++this->max_y; }

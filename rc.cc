@@ -295,7 +295,7 @@ int main(int argc, char **argv)
     // Write usage data to file
     rep_man.file << posestamp << ", " << mem_in_use << "\n";
 
-    // Check for sigint;
+    // Check for sigint
     if(quit.load()) goto BREAKER;
   }
 
@@ -312,8 +312,8 @@ int main(int argc, char **argv)
                               "end"
                               );
 
-    // Prevent endless looping while checking for sigint; terminate normally if no sigint
-    check = 0;
+  // Prevent endless looping while checking for sigint; terminate normally if no sigint
+  check = 0;
   }
 
   // Release valve for sigint

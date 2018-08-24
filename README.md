@@ -9,8 +9,5 @@
 - Optimized with Valgrind 3.14.0;
 
 ## Inputs:
-pointcloud file in binary format:
-`ptcld.bin`
-
-path file in binary format:
-`pos.bin`
+Pose and Pointcloud run-data in HDF5 file format:
+`RunData.h5`

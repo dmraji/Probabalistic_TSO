@@ -10,8 +10,8 @@
 
 ## Inputs:
 Pose and Pointcloud run-data in HDF5 file format
-Default recognized filename:
-`RunData.h5`
+
+Default recognized filename: `RunData.h5`
 
 ## System Requirements
 - C++11 or better

@@ -11,3 +11,12 @@
 ## Inputs:
 Pose and Pointcloud run-data in HDF5 file format:
 `RunData.h5`
+
+## System Requirements
+- C++11 or better
+- CMake
+
+## Dependencies
+- H5Cpp library (comes standard on Ubuntu Xenial)
+- Octomap (https://github.com/OctoMap/octomap)
+- Sparsepp (https://github.com/greg7mdp/sparsepp)

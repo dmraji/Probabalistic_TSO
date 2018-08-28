@@ -40,12 +40,14 @@ struct ind
                       int extent
                       )
   {
+    // Iterate through 2x2x2 of children
     for(int z_i = 0; z_i < 2; ++z_i)
     {
       for(int y_i = 0; y_i < 2; ++y_i)
       {
         for(int x_i = 0; x_i < 2; ++x_i)
         {
+          // Add children sequentially
           children.push_back( { this->x + (x_i * (extent)),
                                 this->y + (y_i * (extent)),
                                 this->z + (z_i * (extent)) } );
@@ -60,6 +62,7 @@ struct ind
   ind get_parent_ind(int extent
                      )
   {
+    // Truncate to parent index
     ind ind_parent = { (this->x - (this->x % extent)),
                        (this->y - (this->y % extent)),
                        (this->z - (this->z % extent)) };
@@ -73,24 +76,30 @@ struct ind
                  std::vector<ind> & node
                  )
   {
+    // Truncate to parent of current node index
     ind cind_corn = { this->x - (this->x % 2),
                       this->y - (this->y % 2),
                       this->z - (this->z % 2) };
 
+    // Iterate through 2x2x2 of children of parent
     for(int z_i = 0; z_i < 2; ++z_i)
     {
       for(int y_i = 0; y_i < 2; ++y_i)
       {
         for(int x_i = 0; x_i < 2; ++x_i)
         {
+          // Write children to node vector
           node.push_back( { cind_corn.x + x_i,
                             cind_corn.y + y_i,
                             cind_corn.z + z_i } );
+          // Terminate if written node doesn't exist
           if(vox.count( node[ (z_i + 1) * (y_i + 1) * (z_i + 1) - 1 ] ) == 0) { return false; }
         }
       }
     }
+    // Debugging
     if(node.size() != 8) { std::cout << node.size() << '\n'; }
+
     return true;
   }
 

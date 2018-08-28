@@ -82,7 +82,7 @@ class out_cents
         occ[it->first].probability = 1;
       }
 
-      // Calls to non-member to fetch center coords of voxels given sparse hash data structures
+      // Calls to members to fetch center coords of voxels given sparse hash data structures
       get_vox_cents(occ,
                     cents_occ,
                     resolution
@@ -98,7 +98,7 @@ class out_cents
                     resolution
                     );
 
-      // Calls to non-member to write center coords to file
+      // Calls to members to write center coords to file
       write_cents(cents_occ,
                   "occupied"
                   );

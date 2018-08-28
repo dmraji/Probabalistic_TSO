@@ -287,7 +287,7 @@ int main(int argc, char **argv)
 
     // Timestamp for usage report
     double posestamp = timestamp(start,
-                                 std::to_string(pose_ind));
+                                 "pose #"+std::to_string(pose_ind));
     // Memory for usage report
     int mem_in_use = getValue();
     // std::cout << mem_in_use << '\n';

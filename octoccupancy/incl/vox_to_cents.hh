@@ -19,15 +19,19 @@
 #include "occ_data.hh"
 #include "free_unk_data.hh"
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 class out_cents
 {
   public:
+    // Writing work is done in constructor after instantiation in main
     out_cents(spp::sparse_hash_map<pt, occ_data> & occ,
               spp::sparse_hash_map<pt, int> & unk
               )
     {
       std::cout << "occupied voxels: " << occ.size() << '\n';
 
+      // Calls to members to write center coords to file
       write_cents(occ,
                   "occupied_octo"
                   );
@@ -38,13 +42,18 @@ class out_cents
 
     }
 
-    // Write cents to file
+    //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_/
+
+    // Write cents to file (occupied)
     void write_cents(spp::sparse_hash_map<pt, occ_data> & cents,
                      std::string filename
                      )
     {
+      // Instantiate output file stream
       std::ofstream file;
       file.open(filename+".txt");
+
+      // Iterate through map and write each center to file
       spp::sparse_hash_map<pt, occ_data> ::iterator it;
       for(it = cents.begin(); it != cents.end(); ++it)
       {
@@ -57,12 +66,18 @@ class out_cents
       file.close();
     }
 
+    //_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_/
+
+    // Write cents to file (unknown)
     void write_cents(spp::sparse_hash_map<pt, int> & cents,
                      std::string filename
                      )
     {
+      // Instantiate output file stream
       std::ofstream file;
       file.open(filename+".txt");
+
+      // Iterate through map and write each center to file
       spp::sparse_hash_map<pt, int> ::iterator it;
       for(it = cents.begin(); it != cents.end(); ++it)
       {

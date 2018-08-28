@@ -18,7 +18,7 @@
 
 #include <sparsepp/spp.h>
 
-// OcTree libs
+// Octomap libs
 #include <octomap/octomap.h>
 #include <octomap/OcTree.h>
 
@@ -35,7 +35,10 @@ using namespace std;
 // Octomap namespace
 using namespace octomap;
 
-std::atomic<bool> quit(false);    // signal flag
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// TO ENSURE USAGE DATA STILL WRITTEN IN CASE OF SIGINT (BEGIN)
+std::atomic<bool> quit(false);
 
 void got_signal(int)
 {
@@ -47,7 +50,11 @@ class sigint_check
   public:
     ~sigint_check() { std::cout << "destructor\n"; }
 };
+// TO ENSURE USAGE DATA STILL WRITTEN IN CASE OF SIGINT (END)
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// USAGE REPORT (MEMORY) DATA RETRIEVAL (BEGIN)
 struct report_manager
 {
   std::ofstream file;
@@ -62,6 +69,8 @@ struct report_manager
     file.close();
   }
 };
+
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
 
 int parseLine(char* line)
 {
@@ -91,8 +100,14 @@ int getValue()
   fclose(file);
   return result;
 }
+// USAGE REPORT (MEMORY) DATA RETRIEVAL (END)
 
-void print_query_info(point3d query, OcTreeNode* node)
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// Coutput information about node in tree
+void print_query_info(point3d query,
+                      OcTreeNode* node
+                      )
 {
   if (node != NULL)
   {
@@ -104,6 +119,9 @@ void print_query_info(point3d query, OcTreeNode* node)
   }
 }
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
+// Simple timestamp function
 double timestamp(double start,
                  string checkpt
                  )
@@ -114,9 +132,11 @@ double timestamp(double start,
   return elapsed;
 }
 
+//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//_//
+
 int main(int argc, char** argv)
 {
-  // Setup to catch sigint
+  // Setup to catch sigint and terminate properly
   struct sigaction sa;
   memset( &sa, 0, sizeof(sa) );
   sa.sa_handler = got_signal;
@@ -125,23 +145,30 @@ int main(int argc, char** argv)
 
   sigint_check SI_C;
   int check = 0;
+
+  // Loop exits upon sigint
   while(check == 0)
   {
+    // Start clock
     std::clock_t start;
     start = std::clock();
     double startstamp = timestamp(start, "start");
 
+    // Instantiate report manager
     report_manager rep_man;
 
-    // Read data from H5 files
-    h5_read reader("RunData.h5");
+    // Instantiate H5 Reader
+    h5_read reader("RunData.h5"
+                   );
 
+    // Parse and read pointcloud data
     int cld_len = reader.sizeup("/cld");
     cldpt *cloud_scans = new cldpt[cld_len];
     reader.data_read_cld(cloud_scans,
                          cld_len
                          );
 
+    // Parse and read pose data
     int poses = reader.sizeup("/posData");
     pose *pose_pts = new pose[poses];
     rot_mat *rots = new rot_mat[poses];
@@ -150,29 +177,29 @@ int main(int argc, char** argv)
                           poses
                           );
 
-    // Baseline usage after file read
+    // Baseline usage after file read; Subtract this from all other usage values to get algorithm usage
     rep_man.file << timestamp(start, "data read") << ", " << getValue() << "\n";
 
     // Default octree constructor; create empty tree and set res of leafs to resolution
     float res = 0.1;
     OcTree tree(res);
 
-    // std::vector<pt> occ;
-    // std::vector<pt> unk;
-
+    // Sparse hash tables to handle voxel centers
     spp::sparse_hash_map<pt, occ_data> occ;
     spp::sparse_hash_map<pt, int> unk;
 
+    // Define initial pose
     point3d origin (0., 0., 0.);
-
-    // std::cout << "Adding pointcloud to tree ... " << '\t';
 
     int scan_pts = 0;
 
+    // Iterate through pose
     for(int pose_ind = 0; pose_ind < poses; ++pose_ind)
     {
-
+      // Current index set to scan index of current pointcloud
       int current_index = cloud_scans[scan_pts].scan_index;
+
+      // Prevent issues with pointclouds that lack pose
       if(current_index == 0)
       {
         break;
@@ -182,21 +209,25 @@ int main(int argc, char** argv)
 
       // int scan_pts = scan_cld_cutoff;
 
+      // Instantiate cloudscan object
       octomap::Pointcloud cloudscan;
 
+      // Iterate through points in cloud for current index
       while(cloud_scans[scan_pts].scan_index == current_index)
       {
+        // Add proper points from scan to cloudscan object
         cloudscan.push_back(cloud_scans[scan_pts].x,
                             cloud_scans[scan_pts].y,
                             cloud_scans[scan_pts].z);
         ++scan_pts;
       }
 
-
+      // Origin set to current pose for raycasting
       origin = point3d(pose_pts[pose_ind].x,
                        pose_pts[pose_ind].y,
                        pose_pts[pose_ind].z);
 
+      // Add pointcloud object to the tree
       tree.insertPointCloud(cloudscan,
                             origin,
                             -1.,
@@ -209,9 +240,13 @@ int main(int argc, char** argv)
 
       // cloudscan.calcBBX(l_bnd, u_bnd);
 
+      // Define initial query
       point3d query (0., 0., 0.);
+
+      // Define initial result of query
       OcTreeNode* result = tree.search(query);
 
+      // Reset unknown map
       unk.clear();
 
       // IMPLEMENTATION #1 - manual comb of bbx for unknown and occupied leafs
@@ -233,29 +268,30 @@ int main(int argc, char** argv)
 
       // IMPLEMENTATION #2 - leaf_iterator comb for occupied voxels, black box "getUnknownLeafCenters" member function for unknown centers
 
+      // Initial corners for bounding box
       pt l_bnd = {0., 0., 0.};
       pt u_bnd = {0., 0., 0.};
+
+      // Iterate through leaves of tree
       for(OcTree::leaf_iterator it = tree.begin_leafs(), end=tree.end_leafs(); it!= end; ++it)
       {
-      //   //manipulate node, e.g.:
-      //   // std::cout << "Node center: " << it.getCoordinate() << std::endl;
-      //   // if(it.getSize() > 0.1f)
-      //   // {
-      //   //   std::cout << "Node size: " << it.getSize() << std::endl;
-      //   //   std::cout << "Node value: " << it->getValue() << std::endl;
-      //   // }
-        // std::cout << "Node value: " << it->getValue() << std::endl;
+        // Query whether node is occupied according to current threshold
         if(tree.isNodeOccupied(*it))
         {
+          // Get the occupancy of the node
           occ[ {it.getCoordinate().x(),
                 it.getCoordinate().y(),
                 it.getCoordinate().z()} ].probability = it->getOccupancy();
+
+          // Get the size of the node
           occ[ {it.getCoordinate().x(),
                 it.getCoordinate().y(),
                 it.getCoordinate().z()} ].sr_extent = it.getSize();
 
+          // Arbitrary threshold used to determine bounding box corners
           if(it->getOccupancy() > 0.9)
           {
+            // If node above threshold is farther than current corner, update corner value
             if(it.getCoordinate().x() < l_bnd.x) { l_bnd.x = it.getCoordinate().x(); }
             else { if(it.getCoordinate().x() > u_bnd.x) { u_bnd.x = it.getCoordinate().x(); } }
             if(it.getCoordinate().y() < l_bnd.y) { l_bnd.y = it.getCoordinate().y(); }
@@ -265,19 +301,22 @@ int main(int argc, char** argv)
           }
         }
       }
+
+      // Coutput corners of bounding box
       std::cout << l_bnd.x << " " << u_bnd.x << '\n';
       std::cout << l_bnd.y << " " << u_bnd.y << '\n';
       std::cout << l_bnd.z << " " << u_bnd.z << '\n';
 
+      // Iterate through bounding box by resolution
       for(double ix = l_bnd.x; ix < u_bnd.x; ix += res)
       {
         for(double iy = l_bnd.y; iy < u_bnd.y; iy += res)
         {
           for(double iz = l_bnd.z; iz < u_bnd.z; iz += res)
           {
+            // If node is not in tree, add it to unknown map
             if(!tree.search(ix, iy, iz))
             {
-              // std::cout << "unknown" << '\n';
               ++unk[ {ix, iy, iz} ];
             }
           }
@@ -298,71 +337,44 @@ int main(int argc, char** argv)
       //           unk_p3d[i].z()} ];
       // }
 
+      // Reset cloudscan object
       cloudscan.clear();
-      double posestamp = timestamp(start, std::to_string(pose_ind));
+
+      // Timestamp for usage report
+      double posestamp = timestamp(start,
+                                   "pose #"+std::to_string(pose_ind));
+
+      // Memory for usage report
       int mem_in_use = getValue();
       // std::cout << mem_in_use << '\n';
+
+      // Write usage data to file
       rep_man.file << posestamp << ", " << mem_in_use << "\n";
 
-      // Check for sigint;
+      // Check for sigint
       if(quit.load()) goto BREAKER;
 
     }
 
+    // Instantiation of data writer (process done in construction)
     out_cents writer(occ,
                      unk
                      );
 
-    // origin = point3d(12., 12.5, -11.);
-    //
-    // octomap::KeySet free_cells, occupied_cells;
-    //
-    // tree.computeDiscreteUpdate(cloudscan,
-    //                            origin,
-    //                            free_cells,
-    //                            occupied_cells,
-    //                            -1.);
-
-    // OcTreeNode: represents 3D occupancy grid cell;
-    //   In this case, "result" stores the cell's log-odds occupancy
-
-    // Octree.search: searches tree node at specified depth given 3D point;
-    //   Important to check whether returned node is NULL (occurs if it is in unkown space)
-    // print_query_info(query, result);
-    //
-    // query = point3d(1.,1.,1.);
-    // result = tree.search (query);
-    // print_query_info(query, result);
-    //
-    // point3d origin (0., 0., 0.);
-    // point3d dir (0., 0., 0.);
-    // point3d end (0., 0., 0.);
-    // origin = point3d(0., 0., 0.);
-    // dir = point3d(1., 1., 1.);
-    // end = point3d(2., 2., 2.);
-    // bool ray_0 = tree.castRay(origin, dir, end, false, 0);
-    //
-    // std::cout << ray_0 << '\n';
-    //
-    // key_0 = coordToKey()
-    // std::vector<KeyRay> rays;
-    // rays.push_back()
-    // tree.computeRay(origin, end, rays)
-    //
-    // cout << endl;
-
     // OcTree.writeBinary: writes OcTree to binary file;
-    //   Tree is first converted to MLE and then "pruned" before writing
+    // Tree is first converted to MLE and then "pruned" before writing
     tree.writeBinary("octoccupancy_tree.bt");
     cout << endl;
+
+    // Prevent endless looping while checking for sigint; terminate normally if no sigint
     check = 1;
   }
 
+  // Release valve for sigint
   BREAKER:
     ;
 
   return 0;
 
   // cout << "now you can use octovis to visualize: octovis template_tree.bt"  << endl;
-  // cout << "Hint: hit 'F'-key in viewer to see the freespace" << endl  << endl;
 }
